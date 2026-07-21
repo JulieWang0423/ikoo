@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Simulated walk along University Ave in Charlottesville, passing the
+     UVA Rotunda (38.0356, -78.5034). Add a pin at "The Rotunda" and run
+     this route via Xcode: Debug > Simulate Location, or Simulator:
+     Features > Location > GPX file. Timestamps pace the walk. -->
+<gpx version="1.1" creator="ikoo" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="38.03340" lon="-78.51050"><time>2026-07-19T12:00:00Z</time></wpt>
+  <wpt lat="38.03395" lon="-78.50930"><time>2026-07-19T12:00:40Z</time></wpt>
+  <wpt lat="38.03450" lon="-78.50810"><time>2026-07-19T12:01:20Z</time></wpt>
+  <wpt lat="38.03505" lon="-78.50690"><time>2026-07-19T12:02:00Z</time></wpt>
+  <wpt lat="38.03540" lon="-78.50560"><time>2026-07-19T12:02:40Z</time></wpt>
+  <wpt lat="38.03560" lon="-78.50430"><time>2026-07-19T12:03:20Z</time></wpt>
+  <wpt lat="38.03565" lon="-78.50340"><time>2026-07-19T12:04:00Z</time></wpt>
+  <wpt lat="38.03555" lon="-78.50230"><time>2026-07-19T12:04:40Z</time></wpt>
+  <wpt lat="38.03530" lon="-78.50110"><time>2026-07-19T12:05:20Z</time></wpt>
+  <wpt lat="38.03490" lon="-78.50000"><time>2026-07-19T12:06:00Z</time></wpt>
+</gpx>

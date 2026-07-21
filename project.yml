@@ -1,0 +1,71 @@
+name: ikoo
+options:
+  bundleIdPrefix: com.sihewang
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+targets:
+  ikoo:
+    type: application
+    platform: iOS
+    sources:
+      - ikoo
+    entitlements:
+      path: ikoo/ikoo.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.sihewang.ikoo
+    info:
+      path: ikoo/Info.plist
+      properties:
+        CFBundleDisplayName: ikoo
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSLocationWhenInUseUsageDescription: ikoo shows your position on the map and finds saved places near you.
+        NSLocationAlwaysAndWhenInUseUsageDescription: ikoo needs background location to notify you when you're walking past a place or event you saved — that's the whole point of the app. Your location never leaves your device.
+        # Backend for LLM place extraction; empty string disables it and the
+        # app falls back to manual search. Local dev default:
+        IkooExtractBaseURL: http://127.0.0.1:8000
+        IkooExtractToken: dev-token
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - target: ikooShareExtension
+        embed: true
+  ikooShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - ikooShareExtension
+      - path: ikoo/Models/IngestItem.swift
+      - path: ikoo/Support/AppGroup.swift
+    entitlements:
+      path: ikooShareExtension/ikooShareExtension.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.sihewang.ikoo
+    info:
+      path: ikooShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: ikoo
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsText: true
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: NO
+        PRODUCT_BUNDLE_IDENTIFIER: com.sihewang.ikoo.share
