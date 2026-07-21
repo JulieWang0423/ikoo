@@ -386,6 +386,7 @@ struct ConfirmPinView: View {
             pin.eventDateIsApproximate = true
         }
         pin.rawDateText = candidate?.rawDateText
+        pin.thumbnailURL = extraction?.thumbnailURL
         context.insert(pin)
         return pin
     }

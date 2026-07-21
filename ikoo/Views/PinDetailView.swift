@@ -8,10 +8,11 @@ struct PinDetailView: View {
     @Bindable var pin: SavedPin
 
     @State private var distanceText: String?
+    @State private var lookAroundScene: MKLookAroundScene?
 
     var body: some View {
         List {
-            mapSection
+            heroSection
             momentSection
             whySavedSection
             detailsSection
@@ -26,22 +27,31 @@ struct PinDetailView: View {
             pin.notifyCount = 0
             try? context.save()
             updateDistance()
+            Task { await loadLookAround() }
         }
     }
 
     // MARK: - Sections
 
-    private var mapSection: some View {
+    /// Prefer an immersive Look Around street view of the place; fall back to
+    /// the map. Look Around exists for many urban spots but not all.
+    private var heroSection: some View {
         Section {
-            Map(initialPosition: .region(MKCoordinateRegion(
-                center: pin.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-            ))) {
-                Marker(pin.name, coordinate: pin.coordinate)
+            Group {
+                if let lookAroundScene {
+                    LookAroundPreview(initialScene: lookAroundScene)
+                } else {
+                    Map(initialPosition: .region(MKCoordinateRegion(
+                        center: pin.coordinate,
+                        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                    ))) {
+                        Marker(pin.name, coordinate: pin.coordinate)
+                    }
+                    .allowsHitTesting(false)
+                }
             }
-            .frame(height: 180)
+            .frame(height: 200)
             .listRowInsets(EdgeInsets())
-            .allowsHitTesting(false)
         }
     }
 
@@ -79,17 +89,63 @@ struct PinDetailView: View {
 
     @ViewBuilder
     private var whySavedSection: some View {
-        if let caption = pin.sourceCaption, !caption.isEmpty {
+        let hasCaption = !(pin.sourceCaption ?? "").isEmpty
+        let hasThumb = !(pin.thumbnailURL ?? "").isEmpty
+        if hasCaption || hasThumb {
             Section("Why you saved this") {
-                Text(caption)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                if let thumb = pin.thumbnailURL, let url = URL(string: thumb) {
+                    thumbnailLink(url: url)
+                }
+                if let caption = pin.sourceCaption, !caption.isEmpty {
+                    Text(caption)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
                 if let source = pin.sourceApp, source != "other" {
                     Text("From \(source.capitalized)")
                         .font(.footnote)
                         .foregroundStyle(.tertiary)
                 }
             }
+        }
+    }
+
+    /// The frame from the post that made the user save this — tapping it opens
+    /// the original. Thumbnail URLs can expire, so failure degrades silently.
+    @ViewBuilder
+    private func thumbnailLink(url: URL) -> some View {
+        let image = AsyncImage(url: url) { phase in
+            switch phase {
+            case .success(let img):
+                img.resizable().aspectRatio(contentMode: .fill)
+            case .empty:
+                Rectangle().fill(.quaternary).overlay { ProgressView() }
+            case .failure:
+                EmptyView()
+            @unknown default:
+                EmptyView()
+            }
+        }
+        .frame(height: 200)
+        .frame(maxWidth: .infinity)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(alignment: .bottomTrailing) {
+            if pin.sourceURL != nil {
+                Image(systemName: "play.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(.white)
+                    .shadow(radius: 4)
+                    .padding(10)
+            }
+        }
+
+        if let sourceURL, let link = sourceURL as URL? {
+            Link(destination: link) { image }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        } else {
+            image
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
     }
 
@@ -180,6 +236,13 @@ struct PinDetailView: View {
         guard let here = CLLocationManager().location else { return }
         let meters = here.distance(from: pin.location)
         distanceText = Self.formatDistance(meters)
+    }
+
+    private func loadLookAround() async {
+        let request = MKLookAroundSceneRequest(coordinate: pin.coordinate)
+        let scene = try? await request.scene
+        ikooLog.info("lookAround for \(pin.name, privacy: .public): \(scene == nil ? "none" : "found")")
+        lookAroundScene = scene
     }
 
     static func formatDistance(_ meters: CLLocationDistance) -> String {

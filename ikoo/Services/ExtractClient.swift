@@ -42,6 +42,7 @@ struct ExtractResponse: Codable {
     var fetchStatus: String
     var rawTitle: String?
     var rawDescription: String?
+    var thumbnailURL: String?
     var candidates: [ExtractionCandidate]
 
     enum CodingKeys: String, CodingKey {
@@ -49,6 +50,7 @@ struct ExtractResponse: Codable {
         case fetchStatus = "fetch_status"
         case rawTitle = "raw_title"
         case rawDescription = "raw_description"
+        case thumbnailURL = "thumbnail_url"
     }
 }
 

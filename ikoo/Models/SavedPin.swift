@@ -26,6 +26,9 @@ final class SavedPin {
     var sourceURL: String?
     var sourceApp: String?
     var sourceCaption: String?
+    /// Thumbnail of the source post (from oEmbed/og:image) — the frame that
+    /// made the user save this. Shared across places from the same post.
+    var thumbnailURL: String?
     var createdAt: Date = Date()
     var statusRaw: String = PinStatus.active.rawValue
 

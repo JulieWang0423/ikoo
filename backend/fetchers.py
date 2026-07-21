@@ -24,6 +24,10 @@ _OG_PATTERNS = {
         re.compile(r'<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']*)["\']', re.I),
         re.compile(r'<meta[^>]+content=["\']([^"\']*)["\'][^>]+property=["\']og:description["\']', re.I),
     ],
+    "image": [
+        re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']*)["\']', re.I),
+        re.compile(r'<meta[^>]+content=["\']([^"\']*)["\'][^>]+property=["\']og:image["\']', re.I),
+    ],
 }
 
 
@@ -61,6 +65,7 @@ def _fetch_og(client: httpx.Client, url: str) -> dict:
     return {
         "raw_title": og.get("title"),
         "raw_description": og.get("description"),
+        "thumbnail_url": og.get("image"),
     }
 
 
@@ -72,6 +77,7 @@ def fetch(url: str) -> dict:
         "fetch_status": "unreachable",
         "raw_title": None,
         "raw_description": None,
+        "thumbnail_url": None,
     }
     try:
         with httpx.Client(timeout=TIMEOUT, follow_redirects=True) as client:
@@ -85,6 +91,7 @@ def fetch(url: str) -> dict:
                     data = oembed.json()
                     result["raw_title"] = data.get("title")
                     result["raw_description"] = data.get("author_name")
+                    result["thumbnail_url"] = data.get("thumbnail_url")
                     result["fetch_status"] = "ok" if data.get("title") else "partial"
                     return result
                 except httpx.HTTPError:

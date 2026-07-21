@@ -49,6 +49,7 @@ def extract(body: ExtractRequest, authorization: str = Header(default="")):
         "fetch_status": "ok",
         "raw_title": None,
         "raw_description": None,
+        "thumbnail_url": None,
         "candidates": [],
     }
 

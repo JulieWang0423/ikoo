@@ -37,16 +37,20 @@ struct IkooApp: App {
         let context = container.mainContext
         let existing = (try? context.fetch(FetchDescriptor<SavedPin>())) ?? []
         guard existing.isEmpty else { return }
+        let env = ProcessInfo.processInfo.environment
+        let lat = env["IKOO_SEED_LAT"].flatMap(Double.init) ?? 38.0356
+        let lng = env["IKOO_SEED_LNG"].flatMap(Double.init) ?? -78.5034
         let pin = SavedPin(
             name: "The Rotunda",
-            latitude: 38.0356,
-            longitude: -78.5034,
+            latitude: lat,
+            longitude: lng,
             address: "1826 University Ave, Charlottesville, VA",
             city: "Charlottesville",
             sourceApp: "tiktok"
         )
         pin.sourceURL = "https://www.tiktok.com/@uva/video/7300000000000000000"
         pin.sourceCaption = "the most beautiful spot on grounds 🏛️ Jefferson designed this himself. go at golden hour, sit on the steps #uva #charlottesville #hiddengem"
+        pin.thumbnailURL = ProcessInfo.processInfo.environment["IKOO_SEED_THUMB"]
         context.insert(pin)
 
         // IKOO_SEED_TEST_EVENTS=1 additionally inserts one expired and one
