@@ -79,6 +79,7 @@ struct AddPinView: View {
                 #endif
             }
         }
+        .tint(Theme.accent)
     }
 
     private func runSearch() async {
@@ -171,6 +172,7 @@ struct AddPinConfirmView: View {
         } message: {
             Text("“\(duplicateName ?? "")” is already in your saved places.")
         }
+        .tint(Theme.accent)
     }
 
     private var knownCollections: [String] {

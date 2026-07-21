@@ -106,6 +106,7 @@ struct ConfirmPinView: View {
             }
         }
         .interactiveDismissDisabled()
+        .tint(Theme.accent)
     }
 
     // MARK: - Sections
@@ -283,10 +284,24 @@ struct ConfirmPinView: View {
     }
 
     /// Geocode every candidate concurrently; preselect the ones that matched.
+    /// Each POI search is biased to the candidate's own city — not the user's
+    /// current location — so an article about Paris read from New York doesn't
+    /// resolve "Versailles" to a street near home.
     static func resolveCandidates(_ candidates: [ExtractionCandidate]) async -> [CandidateRow] {
-        let center = CLLocationManager().location?.coordinate
+        let userCenter = CLLocationManager().location?.coordinate
+
+        // Pre-resolve each distinct city hint to a coordinate to bias searches.
+        var cityCenters: [String: CLLocationCoordinate2D] = [:]
+        for city in Set(candidates.compactMap { $0.cityHint }.map { romanized($0) }) {
+            if let placemark = try? await CLGeocoder().geocodeAddressString(city).first,
+               let loc = placemark.location {
+                cityCenters[city] = loc.coordinate
+            }
+        }
+
         return await withTaskGroup(of: (Int, MKMapItem?).self) { group in
             for (index, candidate) in candidates.enumerated() {
+                let center = candidate.cityHint.flatMap { cityCenters[romanized($0)] } ?? userCenter
                 group.addTask {
                     let query = searchQuery(name: candidate.name, city: candidate.cityHint)
                     let match = try? await GeocodingService.search(query, near: center).first
@@ -469,6 +484,7 @@ struct ResolvePlaceView: View {
                 }
             }
         }
+        .tint(Theme.accent)
     }
 
     private func runSearch() async {

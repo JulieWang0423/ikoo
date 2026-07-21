@@ -172,8 +172,9 @@ struct ContentView: View {
         #if DEBUG
         // Automated-test hook: open directly on a given tab.
         switch ProcessInfo.processInfo.environment["IKOO_DEBUG_TAB"] {
-        case "map": return 1
-        case "saved": return 2
+        case "nearby": return 1
+        case "map": return 2
+        case "saved": return 3
         default: break
         }
         #endif
@@ -192,12 +193,15 @@ struct ContentView: View {
             HomeScreen()
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(0)
+            NearbyScreen()
+                .tabItem { Label("Nearby", systemImage: "location") }
+                .tag(1)
             MapScreen()
                 .tabItem { Label("Map", systemImage: "map") }
-                .tag(1)
+                .tag(2)
             PinListScreen()
                 .tabItem { Label("Saved", systemImage: "bookmark") }
-                .tag(2)
+                .tag(3)
         }
         .tint(Theme.accent)
         .overlay(alignment: .bottom) {

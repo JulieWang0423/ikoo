@@ -15,6 +15,12 @@ MOBILE_UA = (
     "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
 )
 
+# Article/blog sites often block the mobile Safari UA but accept a desktop one.
+DESKTOP_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+)
+
 _OG_PATTERNS = {
     "title": [
         re.compile(r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']*)["\']', re.I),
@@ -51,6 +57,30 @@ def _parse_og(html: str) -> dict:
     return out
 
 
+_SCRIPT_STYLE = re.compile(r"<(script|style|noscript|svg)[^>]*>.*?</\1>", re.I | re.S)
+_TAG = re.compile(r"<[^>]+>")
+_WS = re.compile(r"\s+")
+_ENTITIES = {"&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'", "&nbsp;": " "}
+
+
+def _extract_article_text(html: str, limit: int = 8000) -> str | None:
+    """Best-effort readable text from an article/blog/newsletter page. Strips
+    scripts and tags rather than pulling a clean article body — good enough to
+    feed the extractor, which is asked to pick out place names."""
+    body = _SCRIPT_STYLE.sub(" ", html)
+    # Prefer the <body> if present to skip <head> metadata noise.
+    m = re.search(r"<body[^>]*>(.*)</body>", body, re.I | re.S)
+    if m:
+        body = m.group(1)
+    text = _TAG.sub(" ", body)
+    for ent, ch in _ENTITIES.items():
+        text = text.replace(ent, ch)
+    text = _WS.sub(" ", text).strip()
+    if len(text) < 40:
+        return None
+    return text[:limit]
+
+
 _BROWSER_HEADERS = {
     "User-Agent": MOBILE_UA,
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -58,15 +88,24 @@ _BROWSER_HEADERS = {
 }
 
 
-def _fetch_og(client: httpx.Client, url: str) -> dict:
-    resp = client.get(url, headers=_BROWSER_HEADERS)
+def _fetch_og(client: httpx.Client, url: str, want_article: bool = False) -> dict:
+    headers = dict(_BROWSER_HEADERS)
+    if want_article:
+        headers["User-Agent"] = DESKTOP_UA
+    resp = client.get(url, headers=headers)
     resp.raise_for_status()
     og = _parse_og(resp.text)
-    return {
+    out = {
         "raw_title": og.get("title"),
         "raw_description": og.get("description"),
         "thumbnail_url": og.get("image"),
     }
+    # For generic web pages (articles, newsletters, listicles), the og
+    # description is just a teaser — pull the full body so every place named
+    # in the article is available to the extractor.
+    if want_article:
+        out["raw_text"] = _extract_article_text(resp.text)
+    return out
 
 
 def fetch(url: str) -> dict:
@@ -78,6 +117,7 @@ def fetch(url: str) -> dict:
         "raw_title": None,
         "raw_description": None,
         "thumbnail_url": None,
+        "raw_text": None,
     }
     try:
         with httpx.Client(timeout=TIMEOUT, follow_redirects=True) as client:
@@ -97,10 +137,13 @@ def fetch(url: str) -> dict:
                 except httpx.HTTPError:
                     # Photo-mode posts often 404 on oEmbed; try og tags.
                     result.update(_fetch_og(client, canonical))
-            else:
+            elif source == "rednote":
                 result.update(_fetch_og(client, url))
+            else:
+                # Generic web page — pull the full article body too.
+                result.update(_fetch_og(client, url, want_article=True))
 
-            if result["raw_title"] or result["raw_description"]:
+            if result["raw_title"] or result["raw_description"] or result["raw_text"]:
                 result["fetch_status"] = "ok"
     except httpx.HTTPError:
         pass

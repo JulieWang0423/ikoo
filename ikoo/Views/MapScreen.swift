@@ -12,6 +12,7 @@ struct MapScreen: View {
     @State private var selection: UUID?
     @State private var detailPin: SavedPin?
     @State private var showAddSheet = false
+    @State private var showPasteLink = false
     @State private var showAlertsExplainer = false
 
     var body: some View {
@@ -41,10 +42,19 @@ struct MapScreen: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showAddSheet = true
+                    Menu {
+                        Button {
+                            showAddSheet = true
+                        } label: {
+                            Label("Search for a place", systemImage: "magnifyingglass")
+                        }
+                        Button {
+                            showPasteLink = true
+                        } label: {
+                            Label("Paste a link", systemImage: "link")
+                        }
                     } label: {
-                        Label("Add place", systemImage: "plus")
+                        Label("Add", systemImage: "plus")
                     }
                 }
             }
@@ -85,6 +95,9 @@ struct MapScreen: View {
             }
             .sheet(isPresented: $showAddSheet) {
                 AddPinView()
+            }
+            .sheet(isPresented: $showPasteLink) {
+                PasteLinkView()
             }
             .sheet(isPresented: $showAlertsExplainer) {
                 NearbyAlertsExplainer()

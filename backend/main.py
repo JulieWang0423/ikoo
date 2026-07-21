@@ -50,6 +50,7 @@ def extract(body: ExtractRequest, authorization: str = Header(default="")):
         "raw_title": None,
         "raw_description": None,
         "thumbnail_url": None,
+        "raw_text": None,
         "candidates": [],
     }
 
@@ -63,7 +64,8 @@ def extract(body: ExtractRequest, authorization: str = Header(default="")):
         result.update(fetched)
 
     text_parts = [
-        p for p in (result["raw_title"], result["raw_description"], body.caption) if p
+        p for p in (result["raw_title"], result["raw_description"],
+                    result.get("raw_text"), body.caption) if p
     ]
     text = "\n".join(dict.fromkeys(text_parts))  # dedupe, keep order
 

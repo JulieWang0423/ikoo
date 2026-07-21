@@ -46,13 +46,15 @@ EXTRACT_TOOL = {
     },
 }
 
-SYSTEM = """You extract physical places and dated events from social media posts \
-(TikTok, RedNote/Xiaohongshu captions). Posts may be in English, Chinese, or mixed. \
-Only report places a person could physically visit and locate on a map. \
-Skip vague mentions ("this city"), hashtag spam, and the post author's name. \
-Resolve relative dates ("this Saturday") against the share date when given, \
-and put the verbatim phrase in raw_date_text. Lower your confidence when the \
-place name is generic or ambiguous."""
+SYSTEM = """You extract physical places and dated events from shared content — \
+social media captions (TikTok, RedNote/Xiaohongshu) AND travel articles, blog \
+posts, newsletters, and "best of" listicles. Content may be English, Chinese, \
+or mixed. Report every distinct named place a person could physically visit and \
+locate on a map — a long article may name a dozen restaurants, cafes, and sights, \
+so extract them all. Skip vague mentions ("this city"), hashtag spam, website \
+navigation/boilerplate, and author or publication names. Resolve relative dates \
+("this Saturday") against the share date when given, and put the verbatim phrase \
+in raw_date_text. Lower your confidence when a place name is generic or ambiguous."""
 
 
 def extract(text: str, shared_at: str | None, locale_hint: str | None) -> list[dict]:
@@ -65,7 +67,7 @@ def extract(text: str, shared_at: str | None, locale_hint: str | None) -> list[d
 
     message = client.messages.create(
         model=MODEL,
-        max_tokens=1024,
+        max_tokens=4096,
         system=SYSTEM,
         tools=[EXTRACT_TOOL],
         tool_choice={"type": "tool", "name": "report_candidates"},

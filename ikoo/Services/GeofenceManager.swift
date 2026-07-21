@@ -35,6 +35,9 @@ final class GeofenceManager: NSObject, ObservableObject, CLLocationManagerDelega
     private var modelContainer: ModelContainer?
 
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    /// Latest fix, for the Nearby tab's distance sorting. Updated on every
+    /// location delivery.
+    @Published var currentLocation: CLLocation?
 
     /// iOS only lets an app request the When-In-Use → Always upgrade once;
     /// after that the user must go to Settings. Persisted so the "already
@@ -89,6 +92,19 @@ final class GeofenceManager: NSObject, ObservableObject, CLLocationManagerDelega
 
     func requestWhenInUseAuthorization() {
         manager.requestWhenInUseAuthorization()
+    }
+
+    /// Nearby tab: get a foreground fix, asking for When-In-Use first if the
+    /// user hasn't decided yet (Nearby works without the Always upgrade).
+    func requestForegroundLocation() {
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            manager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            manager.requestLocation()
+        default:
+            break
+        }
     }
 
     func requestAlwaysAuthorization() {
@@ -281,6 +297,7 @@ final class GeofenceManager: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let last = locations.last { currentLocation = last }
         rebalance()
     }
 

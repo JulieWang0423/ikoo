@@ -262,7 +262,9 @@ struct PinDetailView: View {
 
     static func formatDistance(_ meters: CLLocationDistance) -> String {
         if meters < 1000 { return "\(Int(meters))m away" }
-        return String(format: "%.1f km away", meters / 1000)
+        let km = meters / 1000
+        if km >= 100 { return "\(Int(km.rounded())) km away" }
+        return String(format: "%.1f km away", km)
     }
 
     private func eventTiming(start: Date, end: Date?) -> String {
