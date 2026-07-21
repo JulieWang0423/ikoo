@@ -92,8 +92,17 @@ final class AppState: ObservableObject {
     static let shared = AppState()
     @Published var selectedPinID: UUID?
     @Published var showNearbyAlertsPrompt = false
+    @Published var toast: String?
 
     private let promptedKey = "hasPromptedNearbyAlertsAfterSave"
+
+    /// Brief success confirmation shown over the whole app after a save.
+    func showToast(_ message: String) {
+        toast = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) { [weak self] in
+            if self?.toast == message { self?.toast = nil }
+        }
+    }
 
     /// The contextual moment to ask for background location: right after the
     /// user's first save, once they can see their pin landed. Shown once; the
@@ -130,6 +139,21 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
             }
         }
         completionHandler()
+    }
+}
+
+/// Transient success confirmation (a save landed).
+struct ToastView: View {
+    let message: String
+    var body: some View {
+        Label(message, systemImage: "checkmark.circle.fill")
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(.green.gradient, in: Capsule())
+            .shadow(radius: 8, y: 2)
+            .padding(.horizontal, 24)
     }
 }
 
@@ -171,6 +195,14 @@ struct ContentView: View {
                 .tabItem { Label("Saved", systemImage: "bookmark") }
                 .tag(2)
         }
+        .overlay(alignment: .bottom) {
+            if let toast = appState.toast {
+                ToastView(message: toast)
+                    .padding(.bottom, 64)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.35), value: appState.toast)
         .fullScreenCover(isPresented: onboardingBinding) {
             OnboardingView {
                 hasCompletedOnboarding = true

@@ -335,12 +335,14 @@ struct ConfirmPinView: View {
     // MARK: - Saving
 
     private func saveBatch() {
+        let count = rows.filter { $0.include && $0.resolved != nil }.count
         for row in rows where row.include {
             guard let mapItem = row.resolved else { continue }
             insertPin(from: mapItem, candidate: row.candidate)
         }
         try? context.save()
         requestPermissionsAndRebalance()
+        AppState.shared.showToast(count == 1 ? "Saved 1 place to your map" : "Saved \(count) places to your map")
         finish()
     }
 
@@ -354,6 +356,7 @@ struct ConfirmPinView: View {
         }
         try? context.save()
         requestPermissionsAndRebalance()
+        AppState.shared.showToast("Saved \(mapItem.name ?? "place") to your map")
         finish()
     }
 

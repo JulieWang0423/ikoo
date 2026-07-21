@@ -75,6 +75,11 @@ struct MapScreen: View {
                         detailPin = pins.first { $0.name.contains(target) }
                     }
                 }
+                if ProcessInfo.processInfo.environment["IKOO_DEBUG_ADD"] == "1" {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        showAddSheet = true
+                    }
+                }
                 #endif
             }
             .sheet(isPresented: $showAddSheet) {
