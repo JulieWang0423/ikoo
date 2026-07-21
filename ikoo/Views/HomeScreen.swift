@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import MapKit
 
 /// Landing tab: explains what ikoo does before dropping the user on a map,
 /// and organizes saved pins into collections and cities (in the spirit of
@@ -14,6 +15,7 @@ struct HomeScreen: View {
     @State private var showNewCollection = false
     @State private var newCollectionName = ""
     @State private var showAlertsExplainer = false
+    @State private var debugCity: String?
 
     private var collections: [(name: String, pins: [SavedPin])] {
         Dictionary(grouping: pins.filter { $0.collectionName != nil }, by: { $0.collectionName! })
@@ -69,6 +71,18 @@ struct HomeScreen: View {
                 NearbyAlertsExplainer()
                     .presentationDetents([.large])
             }
+            #if DEBUG
+            .navigationDestination(item: $debugCity) { city in
+                PinGroupList(title: city,
+                             pins: pins.filter { ($0.city ?? "Somewhere") == city },
+                             startInMap: true)
+            }
+            .onAppear {
+                if let c = ProcessInfo.processInfo.environment["IKOO_DEBUG_OPEN_CITY"] {
+                    debugCity = c
+                }
+            }
+            #endif
         }
     }
 
@@ -242,16 +256,51 @@ struct HomeScreen: View {
     }
 }
 
-/// Reusable filtered pin list (a collection, a city, …).
+/// Reusable view of a filtered set of pins (a collection, a city, …), with a
+/// list and an all-pins map so you can see the whole group laid out together.
 struct PinGroupList: View {
     let title: String
     let pins: [SavedPin]
+    var startInMap = false
+
+    @State private var showMap = false
+    @State private var position: MapCameraPosition = .automatic
+    @State private var selection: UUID?
+    @State private var detailPin: SavedPin?
 
     var body: some View {
+        Group {
+            if showMap {
+                mapView
+            } else {
+                listView
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    withAnimation { showMap.toggle() }
+                } label: {
+                    Label(showMap ? "List" : "Map",
+                          systemImage: showMap ? "list.bullet" : "map")
+                }
+            }
+        }
+        .sheet(item: $detailPin) { pin in
+            NavigationStack { PinDetailView(pin: pin) }
+                .presentationDetents([.medium, .large])
+                .tint(Theme.accent)
+        }
+        .onAppear { if startInMap { showMap = true } }
+    }
+
+    private var listView: some View {
         List {
             ForEach(pins) { pin in
-                NavigationLink {
-                    PinDetailView(pin: pin)
+                Button {
+                    detailPin = pin
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: pin.kind == .event ? "calendar" : "mappin.circle.fill")
@@ -262,11 +311,58 @@ struct PinGroupList: View {
                                 Text(address).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                             }
                         }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
                     }
                 }
+                .buttonStyle(.plain)
+                .listRowBackground(Theme.surface)
             }
         }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
+        .ikooScreenBackground()
+    }
+
+    private var mapView: some View {
+        Map(position: $position, selection: $selection) {
+            ForEach(pins) { pin in
+                Marker(pin.name,
+                       systemImage: pin.kind == .event ? "calendar" : "mappin",
+                       coordinate: pin.coordinate)
+                    .tint(pin.kind == .event ? Theme.event : Theme.accent)
+                    .tag(pin.id)
+            }
+        }
+        .onChange(of: selection) { _, newValue in
+            if let id = newValue, let pin = pins.first(where: { $0.id == id }) {
+                detailPin = pin
+                selection = nil
+            }
+        }
+        .onAppear {
+            position = .region(Self.region(for: pins))
+        }
+        .ignoresSafeArea(edges: .bottom)
+    }
+
+    /// A region framing every pin in the group, with breathing room.
+    static func region(for pins: [SavedPin]) -> MKCoordinateRegion {
+        let coords = pins.map(\.coordinate)
+        guard let first = coords.first else {
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+                span: MKCoordinateSpan(latitudeDelta: 60, longitudeDelta: 60))
+        }
+        var minLat = first.latitude, maxLat = first.latitude
+        var minLng = first.longitude, maxLng = first.longitude
+        for c in coords {
+            minLat = min(minLat, c.latitude); maxLat = max(maxLat, c.latitude)
+            minLng = min(minLng, c.longitude); maxLng = max(maxLng, c.longitude)
+        }
+        let center = CLLocationCoordinate2D(
+            latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2)
+        let span = MKCoordinateSpan(
+            latitudeDelta: max((maxLat - minLat) * 1.4, 0.02),
+            longitudeDelta: max((maxLng - minLng) * 1.4, 0.02))
+        return MKCoordinateRegion(center: center, span: span)
     }
 }
