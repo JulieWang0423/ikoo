@@ -81,10 +81,26 @@ struct IkooApp: App {
     }
 }
 
-/// Cross-cutting UI state (notification deep-links).
+/// Cross-cutting UI state (notification deep-links, permission funnel).
 final class AppState: ObservableObject {
     static let shared = AppState()
     @Published var selectedPinID: UUID?
+    @Published var showNearbyAlertsPrompt = false
+
+    private let promptedKey = "hasPromptedNearbyAlertsAfterSave"
+
+    /// The contextual moment to ask for background location: right after the
+    /// user's first save, once they can see their pin landed. Shown once; the
+    /// home banner is the persistent nudge afterward.
+    func maybePromptNearbyAlertsAfterSave() {
+        guard GeofenceManager.shared.nearbyAlertsState != .on,
+              !UserDefaults.standard.bool(forKey: promptedKey) else { return }
+        UserDefaults.standard.set(true, forKey: promptedKey)
+        // Let the save/confirm sheet finish dismissing before presenting.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            self?.showNearbyAlertsPrompt = true
+        }
+    }
 }
 
 final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
@@ -114,6 +130,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var context
+    @ObservedObject private var appState = AppState.shared
     @State private var pendingIngests: [IngestItem] = []
     @State private var currentIngest: IngestItem?
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
@@ -153,6 +170,10 @@ struct ContentView: View {
                 hasCompletedOnboarding = true
             }
         }
+        .sheet(isPresented: $appState.showNearbyAlertsPrompt) {
+            NearbyAlertsExplainer()
+                .presentationDetents([.large])
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 sweepExpiredEvents()
@@ -163,6 +184,11 @@ struct ContentView: View {
             #if DEBUG
             if ProcessInfo.processInfo.environment["IKOO_SKIP_ONBOARDING"] == "1" {
                 hasCompletedOnboarding = true
+            }
+            if ProcessInfo.processInfo.environment["IKOO_DEBUG_SHOW_ALERTS_PROMPT"] == "1" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    appState.showNearbyAlertsPrompt = true
+                }
             }
             #endif
         }

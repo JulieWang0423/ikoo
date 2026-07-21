@@ -92,12 +92,9 @@ struct AddPinView: View {
         context.insert(pin)
         try? context.save()
 
-        // Permission ladder: When-In-Use at first pin save.
-        if GeofenceManager.shared.authorizationStatus == .notDetermined {
-            GeofenceManager.shared.requestWhenInUseAuthorization()
-        }
-        NotificationService.requestAuthorization()
         GeofenceManager.shared.rebalance()
+        // Contextual, once-only ask for background location after a save.
+        AppState.shared.maybePromptNearbyAlertsAfterSave()
         dismiss()
     }
 }

@@ -72,7 +72,19 @@ struct HomeScreen: View {
                               text: "ikoo reads the caption, finds every place mentioned, and pins them on your map.")
                 howItWorksRow(number: "3", symbol: "bell.badge",
                               text: "Walk near a saved spot someday — ikoo taps you on the shoulder.")
-                if geofence.authorizationStatus != .authorizedAlways {
+                switch geofence.nearbyAlertsState {
+                case .on:
+                    EmptyView()
+                case .needsSettings:
+                    Button {
+                        showAlertsExplainer = true
+                    } label: {
+                        Label("Nearby alerts are off — fix in Settings", systemImage: "bell.slash")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                default:
                     Button {
                         showAlertsExplainer = true
                     } label: {

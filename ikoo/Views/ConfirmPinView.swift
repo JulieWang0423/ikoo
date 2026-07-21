@@ -348,11 +348,10 @@ struct ConfirmPinView: View {
     }
 
     private func requestPermissionsAndRebalance() {
-        if GeofenceManager.shared.authorizationStatus == .notDetermined {
-            GeofenceManager.shared.requestWhenInUseAuthorization()
-        }
-        NotificationService.requestAuthorization()
         GeofenceManager.shared.rebalance()
+        // Ask for background location contextually, once, after the first save
+        // — not with a cold system prompt mid-confirm.
+        AppState.shared.maybePromptNearbyAlertsAfterSave()
     }
 
     private func finish() {

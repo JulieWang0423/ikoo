@@ -5,6 +5,15 @@ import os
 
 let ikooLog = Logger(subsystem: "com.sihewang.ikoo", category: "geofence")
 
+/// What the nearby-alert feature needs from the user next. Drives every
+/// permission-nudge surface (home banner, map button, post-save prompt).
+enum NearbyAlertsState {
+    case on            // authorizedAlways — feature fully works
+    case notAsked      // notDetermined — first prompt not shown yet
+    case needsUpgrade  // whenInUse, "Always" not requested yet — can still prompt
+    case needsSettings // denied, or whenInUse after we already used our one Always prompt
+}
+
 /// Owns all region monitoring. iOS caps region monitoring at 20 regions per
 /// app, so we budget 18 and dynamically re-register the regions nearest to the
 /// user, waking up on significant-location-changes (which relaunch the app
@@ -26,6 +35,28 @@ final class GeofenceManager: NSObject, ObservableObject, CLLocationManagerDelega
     private var modelContainer: ModelContainer?
 
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+
+    /// iOS only lets an app request the When-In-Use → Always upgrade once;
+    /// after that the user must go to Settings. Persisted so the "already
+    /// asked" state survives relaunches.
+    private var hasRequestedAlways: Bool {
+        get { UserDefaults.standard.bool(forKey: "hasRequestedAlways") }
+        set { UserDefaults.standard.set(newValue, forKey: "hasRequestedAlways") }
+    }
+
+    /// Set when the user taps "Turn on" while still at .notDetermined, so the
+    /// When-In-Use grant can chain straight into the Always prompt.
+    private var wantsAlwaysAfterWhenInUse = false
+
+    /// Where the nearby-alert funnel currently stands. Views branch on this.
+    var nearbyAlertsState: NearbyAlertsState {
+        switch authorizationStatus {
+        case .authorizedAlways: return .on
+        case .notDetermined: return .notAsked
+        case .authorizedWhenInUse: return hasRequestedAlways ? .needsSettings : .needsUpgrade
+        default: return .needsSettings  // .denied / .restricted
+        }
+    }
 
     private override init() {
         super.init()
@@ -61,7 +92,24 @@ final class GeofenceManager: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     func requestAlwaysAuthorization() {
+        hasRequestedAlways = true
         manager.requestAlwaysAuthorization()
+    }
+
+    /// Advances the funnel by one system prompt. `.notAsked` requests
+    /// When-In-Use and remembers to chain into Always once granted;
+    /// `.needsUpgrade` requests Always directly. `.needsSettings` and `.on`
+    /// do nothing here — the view sends the user to Settings for the former.
+    func requestNearbyAlerts() {
+        switch nearbyAlertsState {
+        case .notAsked:
+            wantsAlwaysAfterWhenInUse = true
+            manager.requestWhenInUseAuthorization()
+        case .needsUpgrade:
+            requestAlwaysAuthorization()
+        case .needsSettings, .on:
+            break
+        }
     }
 
     // MARK: - Region rebalancing
@@ -216,9 +264,18 @@ final class GeofenceManager: NSObject, ObservableObject, CLLocationManagerDelega
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
+        // The user asked for full nearby alerts; now that When-In-Use is
+        // granted, immediately request the Always upgrade (iOS shows its own
+        // second prompt). This is the whole reason a single "Turn on" tap can
+        // reach Always.
+        if wantsAlwaysAfterWhenInUse, manager.authorizationStatus == .authorizedWhenInUse {
+            wantsAlwaysAfterWhenInUse = false
+            requestAlwaysAuthorization()
+        }
         if manager.authorizationStatus == .authorizedAlways {
             manager.startMonitoringSignificantLocationChanges()
         }
+        ikooLog.info("authorization changed: \(self.authorizationStatus.rawValue)")
         primeLocation()
         rebalance()
     }
