@@ -13,6 +13,7 @@ struct AddPinView: View {
     @State private var results: [MKMapItem] = []
     @State private var searching = false
     @State private var errorMessage: String?
+    @State private var duplicateName: String?
 
     var body: some View {
         NavigationStack {
@@ -59,6 +60,14 @@ struct AddPinView: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .alert("Already saved", isPresented: Binding(
+                get: { duplicateName != nil },
+                set: { if !$0 { duplicateName = nil } }
+            )) {
+                Button("OK", role: .cancel) { duplicateName = nil }
+            } message: {
+                Text("“\(duplicateName ?? "")” is already in your saved places.")
+            }
         }
     }
 
@@ -81,8 +90,15 @@ struct AddPinView: View {
 
     private func save(_ item: MKMapItem) {
         let coordinate = item.placemark.coordinate
+        let name = item.name ?? query
+        if let existing = PinStore.existingDuplicate(
+            name: name, latitude: coordinate.latitude,
+            longitude: coordinate.longitude, in: context) {
+            duplicateName = existing.name
+            return
+        }
         let pin = SavedPin(
-            name: item.name ?? query,
+            name: name,
             latitude: coordinate.latitude,
             longitude: coordinate.longitude,
             address: item.placemark.title,

@@ -45,6 +45,8 @@ struct IkooApp: App {
             city: "Charlottesville",
             sourceApp: "tiktok"
         )
+        pin.sourceURL = "https://www.tiktok.com/@uva/video/7300000000000000000"
+        pin.sourceCaption = "the most beautiful spot on grounds 🏛️ Jefferson designed this himself. go at golden hour, sit on the steps #uva #charlottesville #hiddengem"
         context.insert(pin)
 
         // IKOO_SEED_TEST_EVENTS=1 additionally inserts one expired and one

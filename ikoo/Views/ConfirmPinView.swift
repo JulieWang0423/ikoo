@@ -22,6 +22,7 @@ struct ConfirmPinView: View {
         var candidate: ExtractionCandidate?
         var resolved: MKMapItem?
         var include: Bool
+        var alreadySaved = false
 
         var displayName: String {
             resolved?.name ?? candidate?.name ?? "Unknown place"
@@ -130,12 +131,9 @@ struct ConfirmPinView: View {
                     }
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: row.resolved == nil
-                              ? "questionmark.circle"
-                              : (row.include ? "checkmark.circle.fill" : "circle"))
+                        Image(systemName: rowIcon(row))
                             .font(.title3)
-                            .foregroundStyle(row.resolved == nil ? .orange
-                                             : (row.include ? .green : .secondary))
+                            .foregroundStyle(rowIconColor(row))
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
                                 Text(row.displayName).foregroundStyle(.primary)
@@ -145,13 +143,16 @@ struct ConfirmPinView: View {
                                         .foregroundStyle(.orange)
                                 }
                             }
-                            if let subtitle = row.resolved?.placemark.title {
+                            if row.alreadySaved {
+                                Text("Already in your saved places")
+                                    .font(.footnote).foregroundStyle(.secondary)
+                            } else if let subtitle = row.resolved?.placemark.title {
                                 Text(subtitle).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                             } else {
                                 Text("No map match — tap to search")
                                     .font(.footnote).foregroundStyle(.orange)
                             }
-                            if let evidence = row.candidate?.evidence {
+                            if let evidence = row.candidate?.evidence, !row.alreadySaved {
                                 Text("“\(evidence)”").font(.footnote).foregroundStyle(.tertiary).lineLimit(1)
                             }
                         }
@@ -174,6 +175,18 @@ struct ConfirmPinView: View {
         } footer: {
             Text("Tap to include or skip. The magnifier changes a wrong match.")
         }
+    }
+
+    private func rowIcon(_ row: CandidateRow) -> String {
+        if row.alreadySaved { return "checkmark.seal" }
+        if row.resolved == nil { return "questionmark.circle" }
+        return row.include ? "checkmark.circle.fill" : "circle"
+    }
+
+    private func rowIconColor(_ row: CandidateRow) -> Color {
+        if row.alreadySaved { return .secondary }
+        if row.resolved == nil { return .orange }
+        return row.include ? .green : .secondary
     }
 
     private var addAnotherSection: some View {
@@ -241,8 +254,31 @@ struct ConfirmPinView: View {
         let candidates = extraction?.candidates ?? []
         if !candidates.isEmpty {
             rows = await Self.resolveCandidates(candidates)
+            markDuplicates()
         }
         extracting = false
+    }
+
+    /// Flag rows that already exist (from an earlier save) or that duplicate
+    /// an earlier row in this same batch. Flagged rows default to unchecked so
+    /// the user sees them but doesn't re-save by reflex.
+    private func markDuplicates() {
+        var kept: [(name: String, lat: Double, lng: Double)] = []
+        for index in rows.indices {
+            guard let mapItem = rows[index].resolved else { continue }
+            let c = mapItem.placemark.coordinate
+            let name = mapItem.name ?? rows[index].candidate.map { Self.romanized($0.name) } ?? ""
+            let entry = (name: name, lat: c.latitude, lng: c.longitude)
+            let dupInStore = PinStore.existingDuplicate(
+                name: name, latitude: c.latitude, longitude: c.longitude, in: context) != nil
+            let dupInBatch = kept.contains { PinStore.sameSpot($0, entry) }
+            if dupInStore || dupInBatch {
+                rows[index].alreadySaved = true
+                rows[index].include = false
+            } else {
+                kept.append(entry)
+            }
+        }
     }
 
     /// Geocode every candidate concurrently; preselect the ones that matched.
@@ -324,6 +360,13 @@ struct ConfirmPinView: View {
     @discardableResult
     private func insertPin(from mapItem: MKMapItem, candidate: ExtractionCandidate?) -> SavedPin {
         let coordinate = mapItem.placemark.coordinate
+        let resolvedName = mapItem.name ?? candidate.map { Self.romanized($0.name) } ?? "Unknown place"
+        // Defensive: never create a second pin for the same spot.
+        if let existing = PinStore.existingDuplicate(
+            name: resolvedName, latitude: coordinate.latitude,
+            longitude: coordinate.longitude, in: context) {
+            return existing
+        }
         let pin = SavedPin(
             name: mapItem.name ?? candidate.map { Self.romanized($0.name) } ?? "Unknown place",
             latitude: coordinate.latitude,

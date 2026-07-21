@@ -66,6 +66,17 @@ struct MapScreen: View {
                 }
                 .presentationDetents([.medium, .large])
             }
+            .onAppear {
+                #if DEBUG
+                // Automated-test hook: simulate a notification tap opening the
+                // named pin's detail (the "moment that matters").
+                if let target = ProcessInfo.processInfo.environment["IKOO_DEBUG_OPEN_PIN"] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        detailPin = pins.first { $0.name.contains(target) }
+                    }
+                }
+                #endif
+            }
             .sheet(isPresented: $showAddSheet) {
                 AddPinView()
             }
