@@ -57,6 +57,8 @@ struct NearbyAlertsExplainer: View {
                 .padding(.bottom)
         }
         .padding()
+        .background(Theme.background.ignoresSafeArea())
+        .tint(Theme.accent)
     }
 
     private var primaryLabel: String {

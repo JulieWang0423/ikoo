@@ -65,7 +65,7 @@ struct PinDetailView: View {
             if let distanceText {
                 Label(distanceText, systemImage: "location.fill")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(Theme.accent)
             }
             if pin.kind == .event, let start = pin.eventStart {
                 Label(eventTiming(start: start, end: pin.eventEnd), systemImage: "calendar")
@@ -74,18 +74,26 @@ struct PinDetailView: View {
             }
             HStack(spacing: 12) {
                 Button(action: openInMaps) {
-                    Label("Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
+                    Label("Directions", systemImage: "figure.walk")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
                 if let url = sourceURL {
                     Link(destination: url) {
-                        Label("Watch post", systemImage: "play.rectangle.fill")
+                        Label("Watch post", systemImage: "play.fill")
+                            .foregroundStyle(Theme.accent)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
+                    .tint(Theme.accent)
                 }
             }
+            // Plain monochrome glyphs — the Maps-style diamond symbol renders a
+            // fixed blue and ignores tint, so it's deliberately avoided here.
+            .symbolRenderingMode(.monochrome)
             .padding(.vertical, 2)
         }
         .listRowBackground(Theme.surface)

@@ -49,6 +49,15 @@ struct HomeScreen: View {
             }
             .ikooScreenBackground()
             .navigationTitle("ikoo")
+            #if DEBUG
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Load samples", systemImage: "sparkles") {
+                        SampleData.loadShowcase(into: context)
+                    }
+                }
+            }
+            #endif
             .alert("New collection", isPresented: $showNewCollection) {
                 TextField("e.g. Seoul trip", text: $newCollectionName)
                 Button("Cancel", role: .cancel) { newCollectionName = "" }
@@ -88,7 +97,7 @@ struct HomeScreen: View {
                             .font(.subheadline.weight(.semibold))
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.orange)
+                    .tint(Theme.event)
                 default:
                     Button {
                         showAlertsExplainer = true

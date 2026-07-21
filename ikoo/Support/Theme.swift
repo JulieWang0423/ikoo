@@ -99,6 +99,12 @@ enum Theme {
         tab.backgroundColor = bgColor
         UITabBar.appearance().standardAppearance = tab
         UITabBar.appearance().scrollEdgeAppearance = tab
+
+        // System alert buttons take their colour from the window tint, not the
+        // SwiftUI .tint environment — scope the accent to alert controllers.
+        let accentColor = UIColor { $0.userInterfaceStyle == .dark
+            ? UIColor(Palette.springLeavesLight) : UIColor(Palette.springLeaves) }
+        UIView.appearance(whenContainedInInstancesOf: [UIAlertController.self]).tintColor = accentColor
     }
 
     // MARK: - Helpers

@@ -70,6 +70,7 @@ struct ConfirmPinView: View {
                     manualEventSection
                 }
             }
+            .ikooScreenBackground()
             .navigationTitle("Save to map")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -140,7 +141,7 @@ struct ConfirmPinView: View {
                                 if row.isEvent {
                                     Image(systemName: "calendar")
                                         .font(.caption)
-                                        .foregroundStyle(.orange)
+                                        .foregroundStyle(Theme.event)
                                 }
                             }
                             if row.alreadySaved {
@@ -150,7 +151,7 @@ struct ConfirmPinView: View {
                                 Text(subtitle).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                             } else {
                                 Text("No map match — tap to search")
-                                    .font(.footnote).foregroundStyle(.orange)
+                                    .font(.footnote).foregroundStyle(Theme.event)
                             }
                             if let evidence = row.candidate?.evidence, !row.alreadySaved {
                                 Text("“\(evidence)”").font(.footnote).foregroundStyle(.tertiary).lineLimit(1)
@@ -185,8 +186,8 @@ struct ConfirmPinView: View {
 
     private func rowIconColor(_ row: CandidateRow) -> Color {
         if row.alreadySaved { return .secondary }
-        if row.resolved == nil { return .orange }
-        return row.include ? .green : .secondary
+        if row.resolved == nil { return Theme.event }
+        return row.include ? Theme.accent : .secondary
     }
 
     private var addAnotherSection: some View {
@@ -219,7 +220,7 @@ struct ConfirmPinView: View {
                         }
                         Spacer()
                         if selectedMapItem == mapItem {
-                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.accent)
                         }
                     }
                 }
@@ -437,8 +438,10 @@ struct ResolvePlaceView: View {
                             }
                         }
                     }
+                    .listRowBackground(Theme.surface)
                 }
             }
+            .ikooScreenBackground()
             .overlay {
                 if searching {
                     ProgressView()

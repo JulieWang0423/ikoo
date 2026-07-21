@@ -24,6 +24,9 @@ struct IkooApp: App {
         Theme.applyAppearance()
         #if DEBUG
         seedTestPinIfRequested()
+        if ProcessInfo.processInfo.environment["IKOO_SEED_SHOWCASE"] == "1" {
+            SampleData.loadShowcase(into: container.mainContext)
+        }
         #endif
         // Must run on every launch, including background relaunches from
         // region crossings / significant-location-changes.

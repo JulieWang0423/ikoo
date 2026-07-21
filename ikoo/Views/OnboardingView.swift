@@ -71,6 +71,8 @@ struct OnboardingView: View {
             .padding(.horizontal, 28)
             .padding(.bottom, 24)
         }
+        .background(Theme.background.ignoresSafeArea())
+        .tint(Theme.accent)
     }
 
     private func pageView(symbol: String, title: String, lines: [String]) -> some View {
@@ -78,9 +80,10 @@ struct OnboardingView: View {
             Spacer()
             Image(systemName: symbol)
                 .font(.system(size: 52))
-                .foregroundStyle(.tint)
+                .foregroundStyle(Theme.accent)
             Text(title)
-                .font(.largeTitle.weight(.bold))
+                .ikooTitle(42)
+                .foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
             ForEach(lines, id: \.self) { line in
                 Text(line)

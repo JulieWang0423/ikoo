@@ -37,8 +37,10 @@ struct AddPinView: View {
                             }
                         }
                     }
+                    .listRowBackground(Theme.surface)
                 }
             }
+            .ikooScreenBackground()
             .overlay {
                 if searching {
                     ProgressView()
@@ -120,11 +122,13 @@ struct AddPinConfirmView: View {
                     span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
                 ))) {
                     Marker(placeName, coordinate: item.placemark.coordinate)
+                        .tint(isEvent ? Theme.event : Theme.accent)
                 }
                 .frame(height: 160)
                 .listRowInsets(EdgeInsets())
                 .allowsHitTesting(false)
             }
+            .listRowBackground(Theme.surface)
 
             Section {
                 Text(placeName).font(.headline)
@@ -132,10 +136,12 @@ struct AddPinConfirmView: View {
                     Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
                 }
             }
+            .listRowBackground(Theme.surface)
 
             Section {
                 collectionPicker
             }
+            .listRowBackground(Theme.surface)
 
             Section("Event") {
                 Toggle("This is an event", isOn: $isEvent)
@@ -147,7 +153,9 @@ struct AddPinConfirmView: View {
                     }
                 }
             }
+            .listRowBackground(Theme.surface)
         }
+        .ikooScreenBackground()
         .navigationTitle("Save to map")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

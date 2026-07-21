@@ -65,6 +65,7 @@ struct MapScreen: View {
                     PinDetailView(pin: pin)
                 }
                 .presentationDetents([.medium, .large])
+                .tint(Theme.accent)
             }
             .onAppear {
                 #if DEBUG
