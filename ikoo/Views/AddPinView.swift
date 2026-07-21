@@ -37,6 +37,7 @@ struct AddPinView: View {
                             }
                         }
                     }
+                    .buttonStyle(.plain)
                     .listRowBackground(Theme.surface)
                 }
             }

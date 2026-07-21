@@ -165,12 +165,15 @@ struct ConfirmPinView: View {
                             } label: {
                                 Image(systemName: "magnifyingglass")
                                     .font(.footnote)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.accent)
                             }
                             .buttonStyle(.borderless)
                         }
                     }
                 }
+                // .plain so the label text renders black/grey instead of the
+                // button tint; the checkmark/magnifier keep explicit accent.
+                .buttonStyle(.plain)
             }
         } header: {
             Text("Places in this post")
@@ -225,6 +228,7 @@ struct ConfirmPinView: View {
                         }
                     }
                 }
+                .buttonStyle(.plain)
             }
         } header: {
             Text("Place")
@@ -453,6 +457,7 @@ struct ResolvePlaceView: View {
                             }
                         }
                     }
+                    .buttonStyle(.plain)
                     .listRowBackground(Theme.surface)
                 }
             }
