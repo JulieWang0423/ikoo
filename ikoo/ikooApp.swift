@@ -116,22 +116,42 @@ struct ContentView: View {
     @Environment(\.modelContext) private var context
     @State private var pendingIngests: [IngestItem] = []
     @State private var currentIngest: IngestItem?
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var selectedTab = {
         #if DEBUG
         // Automated-test hook: open directly on a given tab.
-        if ProcessInfo.processInfo.environment["IKOO_DEBUG_TAB"] == "saved" { return 1 }
+        switch ProcessInfo.processInfo.environment["IKOO_DEBUG_TAB"] {
+        case "map": return 1
+        case "saved": return 2
+        default: break
+        }
         #endif
         return 0
     }()
 
+    private var onboardingBinding: Binding<Bool> {
+        Binding(
+            get: { !hasCompletedOnboarding },
+            set: { if !$0 { hasCompletedOnboarding = true } }
+        )
+    }
+
     var body: some View {
         TabView(selection: $selectedTab) {
+            HomeScreen()
+                .tabItem { Label("Home", systemImage: "house") }
+                .tag(0)
             MapScreen()
                 .tabItem { Label("Map", systemImage: "map") }
-                .tag(0)
+                .tag(1)
             PinListScreen()
                 .tabItem { Label("Saved", systemImage: "bookmark") }
-                .tag(1)
+                .tag(2)
+        }
+        .fullScreenCover(isPresented: onboardingBinding) {
+            OnboardingView {
+                hasCompletedOnboarding = true
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
@@ -140,9 +160,17 @@ struct ContentView: View {
             }
         }
         .onAppear {
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["IKOO_SKIP_ONBOARDING"] == "1" {
+                hasCompletedOnboarding = true
+            }
+            #endif
+        }
+        .onAppear {
             sweepExpiredEvents()
             drainInbox()
         }
+        // Not shown while onboarding is up; drainInbox re-runs on foreground.
         .sheet(item: $currentIngest) { item in
             ConfirmPinView(item: item) {
                 pendingIngests.removeAll { $0.id == item.id }

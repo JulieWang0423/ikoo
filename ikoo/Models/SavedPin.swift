@@ -36,6 +36,9 @@ final class SavedPin {
     var rawDateText: String?
 
     // Geofence bookkeeping
+    /// User-defined grouping ("Seoul trip", "Date spots"). Nil = unfiled.
+    var collectionName: String?
+
     var lastNotifiedAt: Date?
     var lastOpenedAt: Date?
     var notifyCount: Int = 0

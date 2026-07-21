@@ -40,6 +40,7 @@ struct PinDetailView: View {
             }
 
             Section {
+                collectionPicker
                 Button {
                     openInMaps()
                 } label: {
@@ -72,6 +73,42 @@ struct PinDetailView: View {
             pin.notifyCount = 0
             try? context.save()
         }
+    }
+
+    /// Existing collections come from pins plus names pre-registered on the
+    /// home screen (UserDefaults "knownCollections").
+    private var knownCollections: [String] {
+        let fromDefaults = UserDefaults.standard.stringArray(forKey: "knownCollections") ?? []
+        let fromPins = (try? context.fetch(FetchDescriptor<SavedPin>()))?.compactMap(\.collectionName) ?? []
+        return Array(Set(fromDefaults + fromPins)).sorted()
+    }
+
+    private var collectionPicker: some View {
+        Menu {
+            Button("None") { setCollection(nil) }
+            ForEach(knownCollections, id: \.self) { name in
+                Button {
+                    setCollection(name)
+                } label: {
+                    if pin.collectionName == name {
+                        Label(name, systemImage: "checkmark")
+                    } else {
+                        Text(name)
+                    }
+                }
+            }
+        } label: {
+            LabeledContent {
+                Text(pin.collectionName ?? "None")
+            } label: {
+                Label("Collection", systemImage: "folder")
+            }
+        }
+    }
+
+    private func setCollection(_ name: String?) {
+        pin.collectionName = name
+        try? context.save()
     }
 
     private func openInMaps() {
