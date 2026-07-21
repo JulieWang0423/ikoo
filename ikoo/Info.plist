@@ -33,6 +33,10 @@
 	<string>ikoo needs background location to notify you when you're walking past a place or event you saved — that's the whole point of the app. Your location never leaves your device.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>ikoo shows your position on the map and finds saved places near you.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>BigShouldersDisplay.ttf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

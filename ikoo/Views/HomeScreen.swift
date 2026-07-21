@@ -34,16 +34,20 @@ struct HomeScreen: View {
     var body: some View {
         NavigationStack {
             List {
-                heroSection
-                if pins.isEmpty {
-                    gettingStartedSection
-                } else {
-                    statsSection
-                    collectionsSection
-                    citiesSection
-                    recentSection
+                Group {
+                    heroSection
+                    if pins.isEmpty {
+                        gettingStartedSection
+                    } else {
+                        statsSection
+                        collectionsSection
+                        citiesSection
+                        recentSection
+                    }
                 }
+                .listRowBackground(Theme.surface)
             }
+            .ikooScreenBackground()
             .navigationTitle("ikoo")
             .alert("New collection", isPresented: $showNewCollection) {
                 TextField("e.g. Seoul trip", text: $newCollectionName)
@@ -65,7 +69,8 @@ struct HomeScreen: View {
         Section {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Never walk past a place you saved.")
-                    .font(.title3.weight(.semibold))
+                    .ikooTitle(30)
+                    .foregroundStyle(Theme.ink)
                 howItWorksRow(number: "1", symbol: "square.and.arrow.up",
                               text: "See a place or event on TikTok or RedNote? Tap Share → ikoo.")
                 howItWorksRow(number: "2", symbol: "sparkles",
@@ -241,7 +246,7 @@ struct PinGroupList: View {
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: pin.kind == .event ? "calendar" : "mappin.circle.fill")
-                            .foregroundStyle(pin.kind == .event ? .orange : .red)
+                            .foregroundStyle(pin.kind == .event ? Theme.event : Theme.accent)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(pin.name)
                             if let address = pin.address {

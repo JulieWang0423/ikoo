@@ -30,6 +30,8 @@ targets:
         IkooExtractToken: dev-token
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        UIAppFonts:
+          - BigShouldersDisplay.ttf
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"

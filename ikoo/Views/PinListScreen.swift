@@ -33,19 +33,20 @@ struct PinListScreen: View {
                             } label: {
                                 HStack(spacing: 12) {
                                     Image(systemName: "calendar.badge.clock")
-                                        .foregroundStyle(.orange)
+                                        .foregroundStyle(Theme.event)
                                         .font(.title2)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(pin.name).font(.headline)
                                         if let start = pin.eventStart {
                                             Text(start, format: .relative(presentation: .named))
                                                 .font(.subheadline)
-                                                .foregroundStyle(.orange)
+                                                .foregroundStyle(Theme.event)
                                         }
                                     }
                                 }
                             }
                         }
+                        .listRowBackground(Theme.surface)
                     }
                 }
                 ForEach(pins) { pin in
@@ -66,10 +67,12 @@ struct PinListScreen: View {
                             Label(pin.muted ? "Unmute" : "Mute",
                                   systemImage: pin.muted ? "bell" : "bell.slash")
                         }
-                        .tint(.indigo)
+                        .tint(Theme.event)
                     }
+                    .listRowBackground(Theme.surface)
                 }
             }
+            .ikooScreenBackground()
             .overlay {
                 if pins.isEmpty {
                     ContentUnavailableView(
@@ -87,7 +90,7 @@ struct PinListScreen: View {
     private func row(for pin: SavedPin) -> some View {
         HStack(spacing: 12) {
             Image(systemName: pin.kind == .event ? "calendar" : "mappin.circle.fill")
-                .foregroundStyle(pin.kind == .event ? .orange : .red)
+                .foregroundStyle(pin.kind == .event ? Theme.event : Theme.accent)
                 .font(.title2)
             VStack(alignment: .leading, spacing: 2) {
                 Text(pin.name).font(.headline)

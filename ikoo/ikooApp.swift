@@ -21,6 +21,7 @@ struct IkooApp: App {
             )
         }
         UNUserNotificationCenter.current().delegate = notificationDelegate
+        Theme.applyAppearance()
         #if DEBUG
         seedTestPinIfRequested()
         #endif
@@ -151,7 +152,7 @@ struct ToastView: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
-            .background(.green.gradient, in: Capsule())
+            .background(Theme.accent, in: Capsule())
             .shadow(radius: 8, y: 2)
             .padding(.horizontal, 24)
     }
@@ -195,6 +196,7 @@ struct ContentView: View {
                 .tabItem { Label("Saved", systemImage: "bookmark") }
                 .tag(2)
         }
+        .tint(Theme.accent)
         .overlay(alignment: .bottom) {
             if let toast = appState.toast {
                 ToastView(message: toast)

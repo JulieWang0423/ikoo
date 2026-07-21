@@ -18,6 +18,7 @@ struct PinDetailView: View {
             detailsSection
             managementSection
         }
+        .ikooScreenBackground()
         .navigationTitle(pin.name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -46,6 +47,7 @@ struct PinDetailView: View {
                         span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
                     ))) {
                         Marker(pin.name, coordinate: pin.coordinate)
+                            .tint(pin.kind == .event ? Theme.event : Theme.accent)
                     }
                     .allowsHitTesting(false)
                 }
@@ -53,6 +55,7 @@ struct PinDetailView: View {
             .frame(height: 200)
             .listRowInsets(EdgeInsets())
         }
+        .listRowBackground(Theme.surface)
     }
 
     /// The "standing on the street" moment: how far, and the two things you
@@ -67,7 +70,7 @@ struct PinDetailView: View {
             if pin.kind == .event, let start = pin.eventStart {
                 Label(eventTiming(start: start, end: pin.eventEnd), systemImage: "calendar")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.event)
             }
             HStack(spacing: 12) {
                 Button(action: openInMaps) {
@@ -85,6 +88,7 @@ struct PinDetailView: View {
             }
             .padding(.vertical, 2)
         }
+        .listRowBackground(Theme.surface)
     }
 
     @ViewBuilder
@@ -107,6 +111,7 @@ struct PinDetailView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
+            .listRowBackground(Theme.surface)
         }
     }
 
@@ -168,6 +173,7 @@ struct PinDetailView: View {
                 }
             }
         }
+        .listRowBackground(Theme.surface)
     }
 
     private var managementSection: some View {
@@ -185,6 +191,7 @@ struct PinDetailView: View {
                 Label("Nearby alerts", systemImage: "bell")
             }
         }
+        .listRowBackground(Theme.surface)
     }
 
     // MARK: - Collection picker
