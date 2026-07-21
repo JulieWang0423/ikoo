@@ -97,7 +97,7 @@ struct HomeScreen: View {
                             .font(.subheadline.weight(.semibold))
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(Theme.event)
+                    .tint(Theme.accent)
                 default:
                     Button {
                         showAlertsExplainer = true

@@ -17,10 +17,14 @@ enum Theme {
         static let charcoal = Color(hex: 0x3C3C3C)
         static let slate = Color(hex: 0x6B7B84)
         static let slateLight = Color(hex: 0x92A2A6)
-        static let springLeaves = Color(hex: 0x849E15)
-        static let springLeavesLight = Color(hex: 0xA6C22A)
+        // Primary accent — warm poppy. Reads strongly on both sand and charcoal,
+        // and a red-orange map pin matches the convention people expect.
         static let poppy = Color(hex: 0xD8560E)
         static let poppyLight = Color(hex: 0xE8722E)
+        // Event accent — cool teal-blue. Warm/cool split keeps place vs time
+        // instantly distinct; deep enough to stay readable on sand.
+        static let eventTeal = Color(hex: 0x2F6B7D)
+        static let eventTealLight = Color(hex: 0x7FB2C4)
         // Slightly warmer/cooler surface tints than the pure base, for cards.
         static let sandDim = Color(hex: 0xD6CFBA)
         static let charcoalLift = Color(hex: 0x484848)
@@ -38,9 +42,9 @@ enum Theme {
     static let inkSecondary = dynamic(light: Palette.slate, dark: Palette.slateLight)
 
     /// The one "something is here" accent — arrival, place pins, primary CTAs.
-    static let accent = dynamic(light: Palette.springLeaves, dark: Palette.springLeavesLight)
+    static let accent = dynamic(light: Palette.poppy, dark: Palette.poppyLight)
     /// Time-based accent — events, "happening soon".
-    static let event = dynamic(light: Palette.poppy, dark: Palette.poppyLight)
+    static let event = dynamic(light: Palette.eventTeal, dark: Palette.eventTealLight)
 
     // MARK: - Type
 
@@ -103,7 +107,7 @@ enum Theme {
         // System alert buttons take their colour from the window tint, not the
         // SwiftUI .tint environment — scope the accent to alert controllers.
         let accentColor = UIColor { $0.userInterfaceStyle == .dark
-            ? UIColor(Palette.springLeavesLight) : UIColor(Palette.springLeaves) }
+            ? UIColor(Palette.poppyLight) : UIColor(Palette.poppy) }
         UIView.appearance(whenContainedInInstancesOf: [UIAlertController.self]).tintColor = accentColor
     }
 
