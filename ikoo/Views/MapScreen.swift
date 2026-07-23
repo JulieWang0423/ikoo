@@ -14,6 +14,7 @@ struct MapScreen: View {
     @State private var showAddSheet = false
     @State private var showPasteLink = false
     @State private var showAlertsExplainer = false
+    @State private var showingAll = false
 
     var body: some View {
         NavigationStack {
@@ -26,28 +27,31 @@ struct MapScreen: View {
                 }
             }
             .mapControls {
-                MapUserLocationButton()
                 MapCompass()
             }
             .overlay(alignment: .bottomLeading) {
-                if !pins.isEmpty {
-                    Button {
-                        withAnimation {
+                Button {
+                    withAnimation {
+                        if showingAll || pins.isEmpty {
+                            position = .userLocation(fallback: .automatic)
+                        } else {
                             position = .region(PinGroupList.region(for: Array(pins)))
                         }
-                    } label: {
-                        Image(systemName: "globe.americas.fill")
-                            .font(.title3)
-                            .foregroundStyle(Theme.accent)
-                            .padding(11)
-                            .background(.regularMaterial, in: Circle())
-                            .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                        showingAll.toggle()
                     }
-                    .accessibilityLabel("Show all my places")
-                    .padding(.leading, 12)
-                    // Clear Apple's map attribution at the bottom-left.
-                    .padding(.bottom, 44)
+                } label: {
+                    Image(systemName: showingAll ? "location.fill" : "arrow.up.left.and.arrow.down.right")
+                        .font(.title3)
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 22, height: 22)
+                        .padding(11)
+                        .background(.regularMaterial, in: Circle())
+                        .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
                 }
+                .accessibilityLabel(showingAll ? "Center on me" : "Show all my places")
+                .padding(.leading, 12)
+                // Clear Apple's map attribution at the bottom-left.
+                .padding(.bottom, 44)
             }
             .navigationTitle("ikoo")
             .navigationBarTitleDisplayMode(.inline)
@@ -113,7 +117,10 @@ struct MapScreen: View {
                 }
                 if ProcessInfo.processInfo.environment["IKOO_DEBUG_FIT_ALL"] == "1" {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                        if !pins.isEmpty { position = .region(PinGroupList.region(for: Array(pins))) }
+                        if !pins.isEmpty {
+                            position = .region(PinGroupList.region(for: Array(pins)))
+                            showingAll = true
+                        }
                     }
                 }
                 #endif
