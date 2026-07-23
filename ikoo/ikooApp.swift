@@ -21,6 +21,8 @@ struct IkooApp: App {
             )
         }
         UNUserNotificationCenter.current().delegate = notificationDelegate
+        AppState.shared.container = container
+        NotificationService.registerCategories()
         Theme.applyAppearance()
         #if DEBUG
         seedTestPinIfRequested()
@@ -97,8 +99,24 @@ final class AppState: ObservableObject {
     @Published var selectedPinID: UUID?
     @Published var showNearbyAlertsPrompt = false
     @Published var toast: String?
+    /// Set at launch; lets non-View code (the notification action handler)
+    /// reach the store.
+    var container: ModelContainer?
 
     private let promptedKey = "hasPromptedNearbyAlertsAfterSave"
+
+    /// Mark a place visited (from the notification action or elsewhere). It
+    /// drops off the wishlist and stops nudging on the next rebalance.
+    func markVisited(pinID: UUID) {
+        MainActor.assumeIsolated {
+            guard let context = container?.mainContext else { return }
+            let descriptor = FetchDescriptor<SavedPin>(predicate: #Predicate { $0.id == pinID })
+            guard let pin = try? context.fetch(descriptor).first else { return }
+            pin.visitedAt = Date()
+            try? context.save()
+            GeofenceManager.shared.rebalance()
+        }
+    }
 
     /// Brief success confirmation shown over the whole app after a save.
     func showToast(_ message: String) {
@@ -139,7 +157,11 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         if let idString = response.notification.request.content.userInfo["pinID"] as? String,
            let id = UUID(uuidString: idString) {
             DispatchQueue.main.async {
-                AppState.shared.selectedPinID = id
+                if response.actionIdentifier == "MARK_VISITED" {
+                    AppState.shared.markVisited(pinID: id)
+                } else {
+                    AppState.shared.selectedPinID = id
+                }
             }
         }
         completionHandler()

@@ -22,7 +22,7 @@ struct MapScreen: View {
                 UserAnnotation()
                 ForEach(pins) { pin in
                     Marker(pin.name, systemImage: pin.kind == .event ? "calendar" : "mappin", coordinate: pin.coordinate)
-                        .tint(pin.kind == .event ? Theme.event : Theme.accent)
+                        .tint(pin.visited ? .gray : (pin.kind == .event ? Theme.event : Theme.accent))
                         .tag(pin.id)
                 }
             }

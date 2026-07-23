@@ -184,7 +184,8 @@ final class GeofenceManager: NSObject, ObservableObject, CLLocationManagerDelega
             predicate: #Predicate { $0.statusRaw == activeRaw && $0.muted == false }
         )
         let pins = (try? context.fetch(descriptor)) ?? []
-        return pins.filter { !$0.isExpiredEvent && !Self.inCooldown($0) }
+        // Visited pins drop off — no more nudges once you've been.
+        return pins.filter { $0.visitedAt == nil && !$0.isExpiredEvent && !Self.inCooldown($0) }
     }
 
     static func inCooldown(_ pin: SavedPin, now: Date = Date()) -> Bool {

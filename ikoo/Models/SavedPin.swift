@@ -46,6 +46,9 @@ final class SavedPin {
     var lastOpenedAt: Date?
     var notifyCount: Int = 0
     var muted: Bool = false
+    /// When the user marked this place as visited. nil = still on the wishlist.
+    /// Visited pins drop off the geofence so you stop getting nudged.
+    var visitedAt: Date?
     var extractionConfidence: Double = 1.0
 
     init(
@@ -110,4 +113,6 @@ final class SavedPin {
         guard let end = effectiveEventEnd else { return false }
         return end < Date()
     }
+
+    var visited: Bool { visitedAt != nil }
 }

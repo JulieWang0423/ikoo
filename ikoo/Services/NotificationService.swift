@@ -2,8 +2,28 @@ import Foundation
 import UserNotifications
 
 enum NotificationService {
+    static let nearbyCategory = "NEARBY_PIN"
+    static let markVisitedAction = "MARK_VISITED"
+
     static func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+    }
+
+    /// A "Been here ✓" action right on the arrival notification, so the loop
+    /// (save → nudge → visit → check off) closes without opening the app.
+    static func registerCategories() {
+        let visited = UNNotificationAction(
+            identifier: markVisitedAction,
+            title: "Been here ✓",
+            options: []
+        )
+        let category = UNNotificationCategory(
+            identifier: nearbyCategory,
+            actions: [visited],
+            intentIdentifiers: [],
+            options: []
+        )
+        UNUserNotificationCenter.current().setNotificationCategories([category])
     }
 
     static func notifyNearby(pins: [SavedPin], distanceMeters: Int?) {
@@ -11,6 +31,7 @@ enum NotificationService {
         let content = UNMutableNotificationContent()
         content.sound = .default
         content.userInfo = ["pinID": first.id.uuidString]
+        content.categoryIdentifier = nearbyCategory
 
         let distanceText = distanceMeters.map { "\($0)m away" } ?? "nearby"
 

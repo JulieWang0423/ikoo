@@ -186,6 +186,17 @@ struct PinDetailView: View {
 
     private var managementSection: some View {
         Section {
+            Toggle(isOn: Binding(
+                get: { pin.visited },
+                set: { visited in
+                    pin.visitedAt = visited ? Date() : nil
+                    try? context.save()
+                    GeofenceManager.shared.rebalance()
+                }
+            )) {
+                Label(pin.visited ? "Been here" : "Mark as visited",
+                      systemImage: pin.visited ? "checkmark.circle.fill" : "checkmark.circle")
+            }
             collectionPicker
             Toggle(isOn: Binding(
                 get: { !pin.muted },

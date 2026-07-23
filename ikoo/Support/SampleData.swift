@@ -59,6 +59,11 @@ enum SampleData {
                 address: s.city, city: s.city, category: s.category,
                 kind: .place, sourceApp: s.source, sourceCaption: s.caption
             )
+            // Mark a couple visited so the Visited filter has content to show.
+            if ProcessInfo.processInfo.environment["IKOO_SEED_VISITED"] == "1",
+               ["Katz's Delicatessen", "Brooklyn Bridge"].contains(s.name) {
+                pin.visitedAt = Date().addingTimeInterval(-5 * 24 * 3600)
+            }
             context.insert(pin)
         }
         try? context.save()
