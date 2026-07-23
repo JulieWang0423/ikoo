@@ -29,6 +29,26 @@ struct MapScreen: View {
                 MapUserLocationButton()
                 MapCompass()
             }
+            .overlay(alignment: .bottomLeading) {
+                if !pins.isEmpty {
+                    Button {
+                        withAnimation {
+                            position = .region(PinGroupList.region(for: Array(pins)))
+                        }
+                    } label: {
+                        Image(systemName: "globe.americas.fill")
+                            .font(.title3)
+                            .foregroundStyle(Theme.accent)
+                            .padding(11)
+                            .background(.regularMaterial, in: Circle())
+                            .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                    }
+                    .accessibilityLabel("Show all my places")
+                    .padding(.leading, 12)
+                    // Clear Apple's map attribution at the bottom-left.
+                    .padding(.bottom, 44)
+                }
+            }
             .navigationTitle("ikoo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -89,6 +109,11 @@ struct MapScreen: View {
                 if ProcessInfo.processInfo.environment["IKOO_DEBUG_ADD"] == "1" {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                         showAddSheet = true
+                    }
+                }
+                if ProcessInfo.processInfo.environment["IKOO_DEBUG_FIT_ALL"] == "1" {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        if !pins.isEmpty { position = .region(PinGroupList.region(for: Array(pins))) }
                     }
                 }
                 #endif
