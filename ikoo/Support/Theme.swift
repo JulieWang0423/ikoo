@@ -13,33 +13,39 @@ enum Theme {
     // MARK: - Palette (raw)
 
     private enum Palette {
-        static let beigeSand = Color(hex: 0xE1DBC9)
-        static let charcoal = Color(hex: 0x3C3C3C)
-        static let slate = Color(hex: 0x6B7B84)
-        static let slateLight = Color(hex: 0x92A2A6)
-        // Primary accent — warm poppy. Reads strongly on both sand and charcoal,
-        // and a red-orange map pin matches the convention people expect.
+        // Warm paper ground — light enough to feel fresh, warm enough to stay
+        // cozy. Cards sit clearly above it so the UI reads layered, not muddy.
+        static let paperLight = Color(hex: 0xF5F0E6)
+        static let cardLight = Color(hex: 0xFFFDF8)
+        static let inkLight = Color(hex: 0x2B2723)      // warm near-black
+        static let mutedLight = Color(hex: 0x8C8377)    // warm gray
+
+        // Warm charcoal in dark mode — not a flat neutral gray.
+        static let paperDark = Color(hex: 0x24211D)
+        static let cardDark = Color(hex: 0x322E29)
+        static let inkDark = Color(hex: 0xF1EBDD)        // warm cream
+        static let mutedDark = Color(hex: 0x9C9286)
+
+        // Primary accent — warm poppy. Reads strongly on both grounds, and a
+        // red-orange map pin matches the convention people expect.
         static let poppy = Color(hex: 0xD8560E)
-        static let poppyLight = Color(hex: 0xE8722E)
+        static let poppyLight = Color(hex: 0xEE7433)
         // Event accent — cool teal-blue. Warm/cool split keeps place vs time
-        // instantly distinct; deep enough to stay readable on sand.
+        // instantly distinct.
         static let eventTeal = Color(hex: 0x2F6B7D)
         static let eventTealLight = Color(hex: 0x7FB2C4)
-        // Slightly warmer/cooler surface tints than the pure base, for cards.
-        static let sandDim = Color(hex: 0xD6CFBA)
-        static let charcoalLift = Color(hex: 0x484848)
     }
 
     // MARK: - Semantic tokens (light/dark aware)
 
-    /// App background — warm sand in light, near-charcoal in dark.
-    static let background = dynamic(light: Palette.beigeSand, dark: Palette.charcoal)
-    /// Raised surfaces (cards, list rows).
-    static let surface = dynamic(light: Color(hex: 0xEDE8DA), dark: Palette.charcoalLift)
+    /// App background — warm paper in light, warm charcoal in dark.
+    static let background = dynamic(light: Palette.paperLight, dark: Palette.paperDark)
+    /// Raised surfaces (cards, list rows) — distinctly lighter than the ground.
+    static let surface = dynamic(light: Palette.cardLight, dark: Palette.cardDark)
     /// Primary text.
-    static let ink = dynamic(light: Palette.charcoal, dark: Palette.beigeSand)
+    static let ink = dynamic(light: Palette.inkLight, dark: Palette.inkDark)
     /// Secondary text, dividers, muted detail.
-    static let inkSecondary = dynamic(light: Palette.slate, dark: Palette.slateLight)
+    static let inkSecondary = dynamic(light: Palette.mutedLight, dark: Palette.mutedDark)
 
     /// The one "something is here" accent — arrival, place pins, primary CTAs.
     static let accent = dynamic(light: Palette.poppy, dark: Palette.poppyLight)
@@ -48,24 +54,35 @@ enum Theme {
 
     // MARK: - Type
 
+    enum TitleStyle { case bigShoulders, rounded }
+    /// Switch the display face for the whole app in one place.
+    static let titleStyle: TitleStyle = .rounded
+
     // The variable font's default instance is Thin, so this is its real
     // PostScript name; the wght variation below pushes it to a heavy weight.
     static let titleFontName = "BigShouldersDisplay-Thin"
 
-    /// Big Shoulders is a variable font; pin a specific weight off the `wght`
-    /// axis so titles render heavy and consistent instead of the light default.
-    /// Falls back to a bold system font if the family failed to register.
     static func titleUIFont(_ size: CGFloat, weight: CGFloat = 700) -> UIFont {
-        let axis = 0x77676874 // 'wght' four-char code
-        let descriptor = UIFontDescriptor(fontAttributes: [
-            .name: titleFontName,
-            UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): [axis: weight],
-        ])
-        let uiFont = UIFont(descriptor: descriptor, size: size)
-        if uiFont.familyName.contains("Big Shoulders") {
-            return uiFont
+        switch titleStyle {
+        case .rounded:
+            // SF Pro Rounded — warm, friendly, native. No bundling.
+            let w: UIFont.Weight = weight >= 800 ? .heavy : (weight >= 700 ? .bold : .semibold)
+            let base = UIFont.systemFont(ofSize: size, weight: w)
+            if let desc = base.fontDescriptor.withDesign(.rounded) {
+                return UIFont(descriptor: desc, size: size)
+            }
+            return base
+        case .bigShoulders:
+            // Variable font; pin a heavy weight off the `wght` axis.
+            let axis = 0x77676874 // 'wght' four-char code
+            let descriptor = UIFontDescriptor(fontAttributes: [
+                .name: titleFontName,
+                UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): [axis: weight],
+            ])
+            let uiFont = UIFont(descriptor: descriptor, size: size)
+            if uiFont.familyName.contains("Big Shoulders") { return uiFont }
+            return .systemFont(ofSize: size, weight: .bold)
         }
-        return .systemFont(ofSize: size, weight: .bold)
     }
 
     static func title(_ size: CGFloat, weight: CGFloat = 700) -> Font {
@@ -78,9 +95,9 @@ enum Theme {
     /// palette. Centralised so every screen inherits the identity for free.
     static func applyAppearance() {
         let inkColor = UIColor { $0.userInterfaceStyle == .dark
-            ? UIColor(Palette.beigeSand) : UIColor(Palette.charcoal) }
+            ? UIColor(Palette.inkDark) : UIColor(Palette.inkLight) }
         let bgColor = UIColor { $0.userInterfaceStyle == .dark
-            ? UIColor(Palette.charcoal) : UIColor(Palette.beigeSand) }
+            ? UIColor(Palette.paperDark) : UIColor(Palette.paperLight) }
 
         let nav = UINavigationBarAppearance()
         nav.configureWithOpaqueBackground()
