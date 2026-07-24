@@ -60,6 +60,15 @@ struct PinListScreen: View {
     var body: some View {
         NavigationStack {
             List {
+                // Part of the scrolling content, on the same layer as the rows.
+                Picker("Filter", selection: $filter) {
+                    ForEach(Filter.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 4, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
                 if !happeningSoon.isEmpty {
                     Section("Happening soon") {
                         ForEach(happeningSoon) { pin in
@@ -67,27 +76,19 @@ struct PinListScreen: View {
                         }
                     }
                 }
-                Section(happeningSoon.isEmpty ? "" : filter.rawValue) {
+                Section {
                     ForEach(mainList) { pin in
                         pinRow(pin, showEventTiming: false)
                     }
                 }
             }
+            .listSectionSpacing(.compact)
             .ikooScreenBackground()
             .searchable(text: $search, prompt: "Search saved places")
             .overlay {
                 if filtered.isEmpty { emptyState }
             }
             .navigationTitle("Saved")
-            .safeAreaInset(edge: .top) {
-                Picker("Filter", selection: $filter) {
-                    ForEach(Filter.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(Theme.background)
-            }
         }
         .tint(Theme.accent)
     }
