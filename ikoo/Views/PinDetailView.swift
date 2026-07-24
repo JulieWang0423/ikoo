@@ -34,28 +34,20 @@ struct PinDetailView: View {
 
     // MARK: - Sections
 
-    /// Prefer an immersive Look Around street view of the place; fall back to
-    /// the map. Look Around exists for many urban spots but not all.
+    /// An immersive Look Around street view when Apple has coverage. No map
+    /// fallback — you reached this from the map, so re-showing it is noise; if
+    /// there's no Look Around, the post thumbnail (in "Why you saved this")
+    /// carries the visual instead.
+    @ViewBuilder
     private var heroSection: some View {
-        Section {
-            Group {
-                if let lookAroundScene {
-                    LookAroundPreview(initialScene: lookAroundScene)
-                } else {
-                    Map(initialPosition: .region(MKCoordinateRegion(
-                        center: pin.coordinate,
-                        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                    ))) {
-                        Marker(pin.name, coordinate: pin.coordinate)
-                            .tint(pin.kind == .event ? Theme.event : Theme.accent)
-                    }
-                    .allowsHitTesting(false)
-                }
+        if let lookAroundScene {
+            Section {
+                LookAroundPreview(initialScene: lookAroundScene)
+                    .frame(height: 200)
+                    .listRowInsets(EdgeInsets())
             }
-            .frame(height: 200)
-            .listRowInsets(EdgeInsets())
+            .listRowBackground(Theme.surface)
         }
-        .listRowBackground(Theme.surface)
     }
 
     /// The "standing on the street" moment: how far, and the two things you

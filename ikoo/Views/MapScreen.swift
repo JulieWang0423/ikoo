@@ -10,6 +10,7 @@ struct MapScreen: View {
 
     @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var selection: UUID?
+    @State private var previewPin: SavedPin?
     @State private var detailPin: SavedPin?
     @State private var showAddSheet = false
     @State private var showPasteLink = false
@@ -30,29 +31,47 @@ struct MapScreen: View {
                 MapCompass()
             }
             .overlay(alignment: .bottomLeading) {
-                Button {
-                    withAnimation {
-                        if showingAll || pins.isEmpty {
-                            position = .userLocation(fallback: .automatic)
-                        } else {
-                            position = .region(PinGroupList.region(for: Array(pins)))
+                if previewPin == nil {
+                    Button {
+                        withAnimation {
+                            if showingAll || pins.isEmpty {
+                                position = .userLocation(fallback: .automatic)
+                            } else {
+                                position = .region(PinGroupList.region(for: Array(pins)))
+                            }
+                            showingAll.toggle()
                         }
-                        showingAll.toggle()
+                    } label: {
+                        Image(systemName: showingAll ? "location.fill" : "arrow.up.left.and.arrow.down.right")
+                            .font(.title3)
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 22, height: 22)
+                            .padding(11)
+                            .background(.regularMaterial, in: Circle())
+                            .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
                     }
-                } label: {
-                    Image(systemName: showingAll ? "location.fill" : "arrow.up.left.and.arrow.down.right")
-                        .font(.title3)
-                        .foregroundStyle(Theme.accent)
-                        .frame(width: 22, height: 22)
-                        .padding(11)
-                        .background(.regularMaterial, in: Circle())
-                        .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                    .accessibilityLabel(showingAll ? "Center on me" : "Show all my places")
+                    .padding(.leading, 12)
+                    // Clear Apple's map attribution at the bottom-left.
+                    .padding(.bottom, 44)
                 }
-                .accessibilityLabel(showingAll ? "Center on me" : "Show all my places")
-                .padding(.leading, 12)
-                // Clear Apple's map attribution at the bottom-left.
-                .padding(.bottom, 44)
             }
+            .overlay(alignment: .bottom) {
+                if let previewPin {
+                    PinPreviewCard(
+                        pin: previewPin,
+                        onDetails: {
+                            let p = previewPin
+                            self.previewPin = nil
+                            detailPin = p
+                        },
+                        onClose: { withAnimation { self.previewPin = nil } }
+                    )
+                    .padding(.bottom, 6)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: previewPin?.id)
             .navigationTitle("ikoo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -84,7 +103,7 @@ struct MapScreen: View {
             }
             .onChange(of: selection) { _, newValue in
                 if let id = newValue, let pin = pins.first(where: { $0.id == id }) {
-                    detailPin = pin
+                    withAnimation { previewPin = pin }
                     selection = nil
                 }
             }
@@ -107,7 +126,7 @@ struct MapScreen: View {
                 // named pin's detail (the "moment that matters").
                 if let target = ProcessInfo.processInfo.environment["IKOO_DEBUG_OPEN_PIN"] {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                        detailPin = pins.first { $0.name.contains(target) }
+                        withAnimation { previewPin = pins.first { $0.name.contains(target) } }
                     }
                 }
                 if ProcessInfo.processInfo.environment["IKOO_DEBUG_ADD"] == "1" {
