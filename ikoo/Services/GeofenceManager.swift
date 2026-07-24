@@ -184,8 +184,12 @@ final class GeofenceManager: NSObject, ObservableObject, CLLocationManagerDelega
             predicate: #Predicate { $0.statusRaw == activeRaw && $0.muted == false }
         )
         let pins = (try? context.fetch(descriptor)) ?? []
-        // Visited pins drop off — no more nudges once you've been.
-        return pins.filter { $0.visitedAt == nil && !$0.isExpiredEvent && !Self.inCooldown($0) }
+        // Visited pins drop off — no more nudges once you've been — unless the
+        // user kept alerts on for a favorite.
+        return pins.filter {
+            ($0.visitedAt == nil || $0.notifyWhenVisited)
+                && !$0.isExpiredEvent && !Self.inCooldown($0)
+        }
     }
 
     static func inCooldown(_ pin: SavedPin, now: Date = Date()) -> Bool {
@@ -247,7 +251,10 @@ final class GeofenceManager: NSObject, ObservableObject, CLLocationManagerDelega
             predicate: #Predicate { $0.statusRaw == activeRaw && $0.muted == false }
         )
         let pins = ((try? context.fetch(descriptor)) ?? [])
-            .filter { ids.contains($0.id) && !$0.isExpiredEvent && !Self.inCooldown($0) }
+            .filter {
+                ids.contains($0.id) && ($0.visitedAt == nil || $0.notifyWhenVisited)
+                    && !$0.isExpiredEvent && !Self.inCooldown($0)
+            }
         ikooLog.info("region entry: \(ids.count) member(s), \(pins.count) eligible after cooldown/mute filter")
         guard !pins.isEmpty else { return }
 

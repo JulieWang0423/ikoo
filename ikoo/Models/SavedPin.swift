@@ -47,8 +47,10 @@ final class SavedPin {
     var notifyCount: Int = 0
     var muted: Bool = false
     /// When the user marked this place as visited. nil = still on the wishlist.
-    /// Visited pins drop off the geofence so you stop getting nudged.
+    /// Visited pins drop off the geofence so you stop getting nudged…
     var visitedAt: Date?
+    /// …unless the user opts to keep alerts on for a favorite worth revisiting.
+    var notifyWhenVisited: Bool = false
     var extractionConfidence: Double = 1.0
 
     init(

@@ -198,19 +198,35 @@ struct PinDetailView: View {
                       systemImage: pin.visited ? "checkmark.circle.fill" : "checkmark.circle")
             }
             collectionPicker
-            Toggle(isOn: Binding(
-                get: { !pin.muted },
-                set: { enabled in
-                    pin.muted = !enabled
-                    if enabled { pin.notifyCount = 0 }
-                    try? context.save()
-                    GeofenceManager.shared.rebalance()
-                }
-            )) {
+            Toggle(isOn: alertsOn) {
                 Label("Nearby alerts", systemImage: "bell")
+            }
+        } footer: {
+            if pin.visited {
+                Text("You've been here, so ikoo stops nudging you. Keep alerts on if it's a favorite worth revisiting.")
             }
         }
         .listRowBackground(Theme.surface)
+    }
+
+    /// One "Nearby alerts" control that adapts: for a place you haven't been,
+    /// it mutes/unmutes; once visited, it decides whether this favorite keeps
+    /// alerting despite the visited default of going quiet.
+    private var alertsOn: Binding<Bool> {
+        Binding(
+            get: { pin.visited ? pin.notifyWhenVisited : !pin.muted },
+            set: { on in
+                if pin.visited {
+                    pin.notifyWhenVisited = on
+                    if on { pin.muted = false }
+                } else {
+                    pin.muted = !on
+                }
+                if on { pin.notifyCount = 0 }
+                try? context.save()
+                GeofenceManager.shared.rebalance()
+            }
+        )
     }
 
     // MARK: - Collection picker
