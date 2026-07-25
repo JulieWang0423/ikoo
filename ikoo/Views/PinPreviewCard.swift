@@ -14,7 +14,8 @@ struct PinPreviewCard: View {
 
     @State private var distanceText: String?
 
-    private var accent: Color { pin.visited ? .gray : (pin.kind == .event ? Theme.event : Theme.accent) }
+    private var cat: CategoryStyle { CategoryStyle.of(pin) }
+    private var accent: Color { pin.visited ? .gray : cat.color }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -115,7 +116,7 @@ struct PinPreviewCard: View {
         RoundedRectangle(cornerRadius: 14, style: .continuous)
             .fill(accent.opacity(0.16))
             .overlay(
-                Image(systemName: pin.kind == .event ? "calendar" : "mappin")
+                Image(systemName: pin.visited ? "checkmark" : cat.symbol)
                     .font(.title2)
                     .foregroundStyle(accent)
             )
@@ -123,16 +124,16 @@ struct PinPreviewCard: View {
 
     private var metaLine: some View {
         HStack(spacing: 6) {
+            Text(cat.label.uppercased())
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(accent)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(accent.opacity(0.14), in: Capsule())
             if pin.visited {
-                Label("Visited", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.gray)
+                Label("Visited", systemImage: "checkmark.circle.fill").foregroundStyle(.gray)
             } else if let distanceText {
-                Label(distanceText, systemImage: "location.fill")
-                    .foregroundStyle(Theme.accent)
-            }
-            if let category = pin.category {
-                if pin.visited || distanceText != nil { Text("·").foregroundStyle(.secondary) }
-                Text(prettyCategory(category)).foregroundStyle(.secondary)
+                Label(distanceText, systemImage: "location.fill").foregroundStyle(accent)
             }
         }
         .font(.caption.weight(.medium))

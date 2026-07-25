@@ -52,12 +52,23 @@ struct PinDetailView: View {
 
     /// The "standing on the street" moment: how far, and the two things you
     /// most want right then — directions, and the post that made you save it.
+    private var cat: CategoryStyle { CategoryStyle.of(pin) }
+
     private var momentSection: some View {
         Section {
+            HStack(spacing: 8) {
+                Label(cat.label, systemImage: cat.symbol)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(cat.color)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(cat.color.opacity(0.15), in: Capsule())
+                Spacer()
+            }
             if let distanceText {
                 Label(distanceText, systemImage: "location.fill")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(cat.color)
             }
             if pin.kind == .event, let start = pin.eventStart {
                 Label(eventTiming(start: start, end: pin.eventEnd), systemImage: "calendar")

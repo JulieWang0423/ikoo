@@ -22,8 +22,8 @@ struct MapScreen: View {
             Map(position: $position, selection: $selection) {
                 UserAnnotation()
                 ForEach(pins) { pin in
-                    Marker(pin.name, systemImage: pin.kind == .event ? "calendar" : "mappin", coordinate: pin.coordinate)
-                        .tint(pin.visited ? .gray : (pin.kind == .event ? Theme.event : Theme.accent))
+                    Marker(pin.name, systemImage: CategoryStyle.of(pin).symbol, coordinate: pin.coordinate)
+                        .tint(pin.visited ? .gray : CategoryStyle.of(pin).color)
                         .tag(pin.id)
                 }
             }

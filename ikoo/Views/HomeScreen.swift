@@ -16,6 +16,7 @@ struct HomeScreen: View {
     @State private var newCollectionName = ""
     @State private var showAlertsExplainer = false
     @State private var debugCity: String?
+    @State private var pushedPin: SavedPin?
 
     private var collections: [(name: String, pins: [SavedPin])] {
         Dictionary(grouping: pins.filter { $0.collectionName != nil }, by: { $0.collectionName! })
@@ -44,13 +45,18 @@ struct HomeScreen: View {
                         statsSection
                         collectionsSection
                         citiesSection
-                        recentSection
                     }
                 }
                 .listRowBackground(Theme.surface)
+                if !pins.isEmpty {
+                    recentSection
+                }
             }
             .ikooScreenBackground()
             .navigationTitle("ikoo")
+            .navigationDestination(item: $pushedPin) { pin in
+                PinDetailView(pin: pin)
+            }
             #if DEBUG
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -225,16 +231,15 @@ struct HomeScreen: View {
     private var recentSection: some View {
         Section("Recently saved") {
             ForEach(pins.prefix(3)) { pin in
-                NavigationLink {
-                    PinDetailView(pin: pin)
+                Button {
+                    pushedPin = pin
                 } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(pin.name)
-                        if let city = pin.city {
-                            Text(city).font(.footnote).foregroundStyle(.secondary)
-                        }
-                    }
+                    PlaceCard(pin: pin)
                 }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
         }
     }
@@ -302,23 +307,15 @@ struct PinGroupList: View {
                 Button {
                     detailPin = pin
                 } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: pin.kind == .event ? "calendar" : "mappin.circle.fill")
-                            .foregroundStyle(pin.kind == .event ? Theme.event : Theme.accent)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(pin.name)
-                            if let address = pin.address {
-                                Text(address).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
-                    }
+                    PlaceCard(pin: pin)
                 }
                 .buttonStyle(.plain)
-                .listRowBackground(Theme.surface)
+                .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
         }
+        .listStyle(.plain)
         .ikooScreenBackground()
     }
 
@@ -326,9 +323,9 @@ struct PinGroupList: View {
         Map(position: $position, selection: $selection) {
             ForEach(pins) { pin in
                 Marker(pin.name,
-                       systemImage: pin.kind == .event ? "calendar" : "mappin",
+                       systemImage: CategoryStyle.of(pin).symbol,
                        coordinate: pin.coordinate)
-                    .tint(pin.kind == .event ? Theme.event : Theme.accent)
+                    .tint(pin.visited ? .gray : CategoryStyle.of(pin).color)
                     .tag(pin.id)
             }
         }

@@ -9,6 +9,7 @@ struct NearbyScreen: View {
     @Query(filter: #Predicate<SavedPin> { $0.statusRaw == "active" })
     private var pins: [SavedPin]
     @ObservedObject private var geofence = GeofenceManager.shared
+    @State private var pushed: SavedPin?
 
     private struct Bucket: Identifiable {
         let id: String
@@ -56,34 +57,23 @@ struct NearbyScreen: View {
             ForEach(buckets) { bucket in
                 Section(bucket.title) {
                     ForEach(bucket.pins, id: \.pin.id) { entry in
-                        NavigationLink {
-                            PinDetailView(pin: entry.pin)
+                        Button {
+                            pushed = entry.pin
                         } label: {
-                            row(entry.pin, meters: entry.meters)
+                            PlaceCard(pin: entry.pin,
+                                      trailing: PinDetailView.formatDistance(entry.meters))
                         }
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
-                    .listRowBackground(Theme.surface)
                 }
             }
         }
-    }
-
-    private func row(_ pin: SavedPin, meters: CLLocationDistance) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: pin.kind == .event ? "calendar" : "mappin.circle.fill")
-                .foregroundStyle(pin.kind == .event ? Theme.event : Theme.accent)
-                .font(.title2)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(pin.name).font(.headline)
-                if let city = pin.city {
-                    Text(city).font(.subheadline).foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            Text(PinDetailView.formatDistance(meters))
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(pin.kind == .event ? Theme.event : Theme.accent)
-                .monospacedDigit()
+        .listStyle(.plain)
+        .navigationDestination(item: $pushed) { pin in
+            PinDetailView(pin: pin)
         }
     }
 
