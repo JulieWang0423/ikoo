@@ -17,6 +17,7 @@ struct HomeScreen: View {
     @State private var showAlertsExplainer = false
     @State private var showAddSheet = false
     @State private var showPasteLink = false
+    @State private var showScreenshot = false
     @State private var debugCity: String?
 
     // Rotating card colors for collections.
@@ -85,6 +86,7 @@ struct HomeScreen: View {
             }
             .sheet(isPresented: $showAddSheet) { AddPinView() }
             .sheet(isPresented: $showPasteLink) { PasteLinkView() }
+            .sheet(isPresented: $showScreenshot) { ScreenshotImportView() }
             #if DEBUG
             .navigationDestination(item: $debugCity) { city in
                 PinGroupList(title: city,
@@ -117,29 +119,34 @@ struct HomeScreen: View {
 
     private var addBar: some View {
         HStack(spacing: 12) {
-            addButton("Add a place", "magnifyingglass", filled: true) { showAddSheet = true }
-            addButton("Paste a link", "link", filled: false) { showPasteLink = true }
+            Button { showAddSheet = true } label: {
+                addButtonLabel("Add a place", "magnifyingglass", filled: true)
+            }
+            .buttonStyle(.plain)
+            Menu {
+                Button { showPasteLink = true } label: { Label("Paste a link", systemImage: "link") }
+                Button { showScreenshot = true } label: { Label("From a screenshot", systemImage: "text.viewfinder") }
+            } label: {
+                addButtonLabel("Import a post", "square.and.arrow.down", filled: false)
+            }
         }
         .padding(.horizontal, 20)
     }
 
-    private func addButton(_ title: String, _ symbol: String, filled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: symbol).font(.subheadline.weight(.bold))
-                Text(title).font(.subheadline.weight(.semibold))
-            }
-            .foregroundStyle(filled ? Color.white : Theme.accent)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 15)
-            .background(filled ? Theme.accent : Theme.accent.opacity(0.12),
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(filled ? Color.clear : Theme.accent.opacity(0.28), lineWidth: 1)
-            )
+    private func addButtonLabel(_ title: String, _ symbol: String, filled: Bool) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol).font(.subheadline.weight(.bold))
+            Text(title).font(.subheadline.weight(.semibold))
         }
-        .buttonStyle(.plain)
+        .foregroundStyle(filled ? Color.white : Theme.accent)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 15)
+        .background(filled ? Theme.accent : Theme.accent.opacity(0.12),
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(filled ? Color.clear : Theme.accent.opacity(0.28), lineWidth: 1)
+        )
     }
 
     // MARK: - Stat chips

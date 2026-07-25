@@ -14,6 +14,7 @@ struct MapScreen: View {
     @State private var detailPin: SavedPin?
     @State private var showAddSheet = false
     @State private var showPasteLink = false
+    @State private var showScreenshot = false
     @State private var showAlertsExplainer = false
     @State private var showingAll = false
 
@@ -96,6 +97,11 @@ struct MapScreen: View {
                         } label: {
                             Label("Paste a link", systemImage: "link")
                         }
+                        Button {
+                            showScreenshot = true
+                        } label: {
+                            Label("From a screenshot", systemImage: "text.viewfinder")
+                        }
                     } label: {
                         Label("Add", systemImage: "plus")
                     }
@@ -154,6 +160,9 @@ struct MapScreen: View {
             }
             .sheet(isPresented: $showPasteLink) {
                 PasteLinkView()
+            }
+            .sheet(isPresented: $showScreenshot) {
+                ScreenshotImportView()
             }
             .sheet(isPresented: $showAlertsExplainer) {
                 NearbyAlertsExplainer()

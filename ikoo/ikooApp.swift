@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import UIKit
 
 @main
 struct IkooApp: App {
@@ -257,6 +258,18 @@ struct ContentView: View {
             if ProcessInfo.processInfo.environment["IKOO_DEBUG_SHOW_ALERTS_PROMPT"] == "1" {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                     appState.showNearbyAlertsPrompt = true
+                }
+            }
+            if ProcessInfo.processInfo.environment["IKOO_DEBUG_OCR"] == "1" {
+                Task {
+                    guard let url = Bundle.main.url(forResource: "ocr-sample", withExtension: "png"),
+                          let data = try? Data(contentsOf: url),
+                          let image = UIImage(data: data) else { return }
+                    let text = await OCRService.recognizeText(in: image)
+                    ikooLog.info("OCR sample text:\n\(text, privacy: .public)")
+                    var item = IngestItem(url: nil, sharedText: text)
+                    item.sourceApp = "screenshot"
+                    await MainActor.run { currentIngest = item }
                 }
             }
             #endif
