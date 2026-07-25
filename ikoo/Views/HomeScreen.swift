@@ -20,10 +20,11 @@ struct HomeScreen: View {
     @State private var showScreenshot = false
     @State private var debugCity: String?
 
-    // Rotating card colors for collections.
+    // Rotating fill colors for collection cards — all deep enough for white
+    // text, drawn from the beachy palette.
     private let palette: [Color] = [
-        Color(hex: 0xD8560E), Color(hex: 0x2E8C9E), Color(hex: 0x6A5ACB),
-        Color(hex: 0xC2971E), Color(hex: 0xA6497F), Color(hex: 0x5C9A46),
+        Color(hex: 0x2F7A6E), Color(hex: 0x1B4436), Color(hex: 0xB85536),
+        Color(hex: 0x8A4E76), Color(hex: 0x5C7830), Color(hex: 0x3E6B8A),
     ]
 
     private var collections: [(name: String, pins: [SavedPin])] {

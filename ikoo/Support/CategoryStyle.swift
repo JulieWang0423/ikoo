@@ -8,16 +8,17 @@ struct CategoryStyle {
     let symbol: String
     let label: String
 
-    // Vivid but grounded — tuned to read on both warm paper and dark charcoal.
+    // Tuned to the beachy palette — warm terracotta/mustard against
+    // teal/olive/pine, readable on both the Isabelline and pine grounds.
     private enum C {
-        static let food = Color(hex: 0xE1552B)   // tomato
-        static let cafe = Color(hex: 0xC77A2E)   // caramel
-        static let bar = Color(hex: 0xA6497F)    // plum
-        static let sight = Color(hex: 0x2E8C9E)  // teal
-        static let nature = Color(hex: 0x5C9A46) // leaf
-        static let shop = Color(hex: 0xC2971E)   // gold
-        static let event = Color(hex: 0x6A5ACB)  // indigo
-        static let other = Color(hex: 0xD8560E)  // poppy (default)
+        static let food = Color(hex: 0xC15A38)   // terracotta
+        static let cafe = Color(hex: 0xB0782E)   // caramel
+        static let bar = Color(hex: 0x8F5178)    // dusty plum
+        static let sight = Color(hex: 0x2F6E5F)  // deep teal-green
+        static let nature = Color(hex: 0x6E8B3C) // olive
+        static let shop = Color(hex: 0xC0912A)   // mustard
+        static let event = Color(hex: 0xCC8A1E)  // Hunyadi gold
+        static let other = Color(hex: 0x3E938B)  // Verdigris (default)
     }
 
     static func of(_ pin: SavedPin) -> CategoryStyle {

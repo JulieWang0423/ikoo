@@ -13,44 +13,45 @@ enum Theme {
     // MARK: - Palette (raw)
 
     private enum Palette {
-        // Warm paper ground — light enough to feel fresh, warm enough to stay
-        // cozy. Cards sit clearly above it so the UI reads layered, not muddy.
-        static let paperLight = Color(hex: 0xF5F0E6)
-        static let cardLight = Color(hex: 0xFFFDF8)
-        static let inkLight = Color(hex: 0x2B2723)      // warm near-black
-        static let mutedLight = Color(hex: 0x8C8377)    // warm gray
+        // Beachy retro palette: Isabelline ground, Brunswick-green ink,
+        // Verdigris teal primary, Hunyadi gold warm accent. Cool and coastal —
+        // deliberately not the warm cream/orange look.
+        static let isabelline = Color(hex: 0xF7F0EB)    // off-white ground
+        static let cardLight = Color(hex: 0xFFFFFF)
+        static let inkLight = Color(hex: 0x1B4436)       // Brunswick green text
+        static let mutedLight = Color(hex: 0x5E726B)     // muted green-gray
 
-        // Warm charcoal in dark mode — not a flat neutral gray.
-        static let paperDark = Color(hex: 0x24211D)
-        static let cardDark = Color(hex: 0x322E29)
-        static let inkDark = Color(hex: 0xF1EBDD)        // warm cream
-        static let mutedDark = Color(hex: 0x9C9286)
+        // Dark mode leans into deep pine, not neutral charcoal. Cards sit
+        // clearly above the ground so surfaces read as layered.
+        static let pineDark = Color(hex: 0x142420)
+        static let cardDark = Color(hex: 0x274139)
+        static let inkDark = Color(hex: 0xF1ECE3)        // warm cream text
+        static let mutedDark = Color(hex: 0x9DABA3)
 
-        // Primary accent — warm poppy. Reads strongly on both grounds, and a
-        // red-orange map pin matches the convention people expect.
-        static let poppy = Color(hex: 0xD8560E)
-        static let poppyLight = Color(hex: 0xEE7433)
-        // Event accent — cool teal-blue. Warm/cool split keeps place vs time
-        // instantly distinct.
-        static let eventTeal = Color(hex: 0x2F6B7D)
-        static let eventTealLight = Color(hex: 0x7FB2C4)
+        // Primary accent — Verdigris teal (deepened a touch so white button
+        // text stays legible).
+        static let verdigris = Color(hex: 0x3E938B)
+        static let verdigrisDark = Color(hex: 0x77B9B2)
+        // Warm accent — Hunyadi gold, for events / "happening soon".
+        static let hunyadi = Color(hex: 0xCC8A1E)
+        static let hunyadiDark = Color(hex: 0xE7B255)
     }
 
     // MARK: - Semantic tokens (light/dark aware)
 
-    /// App background — warm paper in light, warm charcoal in dark.
-    static let background = dynamic(light: Palette.paperLight, dark: Palette.paperDark)
+    /// App background — Isabelline off-white in light, deep pine in dark.
+    static let background = dynamic(light: Palette.isabelline, dark: Palette.pineDark)
     /// Raised surfaces (cards, list rows) — distinctly lighter than the ground.
     static let surface = dynamic(light: Palette.cardLight, dark: Palette.cardDark)
-    /// Primary text.
+    /// Primary text — Brunswick green in light.
     static let ink = dynamic(light: Palette.inkLight, dark: Palette.inkDark)
     /// Secondary text, dividers, muted detail.
     static let inkSecondary = dynamic(light: Palette.mutedLight, dark: Palette.mutedDark)
 
     /// The one "something is here" accent — arrival, place pins, primary CTAs.
-    static let accent = dynamic(light: Palette.poppy, dark: Palette.poppyLight)
+    static let accent = dynamic(light: Palette.verdigris, dark: Palette.verdigrisDark)
     /// Time-based accent — events, "happening soon".
-    static let event = dynamic(light: Palette.eventTeal, dark: Palette.eventTealLight)
+    static let event = dynamic(light: Palette.hunyadi, dark: Palette.hunyadiDark)
 
     // MARK: - Type
 
@@ -97,7 +98,7 @@ enum Theme {
         let inkColor = UIColor { $0.userInterfaceStyle == .dark
             ? UIColor(Palette.inkDark) : UIColor(Palette.inkLight) }
         let bgColor = UIColor { $0.userInterfaceStyle == .dark
-            ? UIColor(Palette.paperDark) : UIColor(Palette.paperLight) }
+            ? UIColor(Palette.pineDark) : UIColor(Palette.isabelline) }
 
         let nav = UINavigationBarAppearance()
         nav.configureWithOpaqueBackground()
@@ -124,7 +125,7 @@ enum Theme {
         // System alert buttons take their colour from the window tint, not the
         // SwiftUI .tint environment — scope the accent to alert controllers.
         let accentColor = UIColor { $0.userInterfaceStyle == .dark
-            ? UIColor(Palette.poppyLight) : UIColor(Palette.poppy) }
+            ? UIColor(Palette.verdigrisDark) : UIColor(Palette.verdigris) }
         UIView.appearance(whenContainedInInstancesOf: [UIAlertController.self]).tintColor = accentColor
     }
 
