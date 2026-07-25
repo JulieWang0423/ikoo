@@ -25,6 +25,7 @@ struct PinListScreen: View {
         return .wantToGo
     }()
     @State private var search = ""
+    @State private var pushed: SavedPin?
 
     private var filtered: [SavedPin] {
         pins.filter { pin in
@@ -82,6 +83,7 @@ struct PinListScreen: View {
                     }
                 }
             }
+            .listStyle(.plain)
             .listSectionSpacing(.compact)
             .ikooScreenBackground()
             .searchable(text: $search, prompt: "Search saved places")
@@ -89,17 +91,24 @@ struct PinListScreen: View {
                 if filtered.isEmpty { emptyState }
             }
             .navigationTitle("Saved")
+            .navigationDestination(item: $pushed) { pin in
+                PinDetailView(pin: pin)
+            }
         }
         .tint(Theme.accent)
     }
 
     @ViewBuilder
     private func pinRow(_ pin: SavedPin, showEventTiming: Bool) -> some View {
-        NavigationLink {
-            PinDetailView(pin: pin)
+        Button {
+            pushed = pin
         } label: {
-            row(for: pin, showEventTiming: showEventTiming)
+            PlaceCard(pin: pin, trailing: eventTrailing(pin, showEventTiming: showEventTiming))
         }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
         .swipeActions(edge: .leading) {
             Button {
                 toggleVisited(pin)
@@ -123,42 +132,11 @@ struct PinListScreen: View {
             }
             .tint(Theme.event)
         }
-        .listRowBackground(Theme.surface)
     }
 
-    @ViewBuilder
-    private func row(for pin: SavedPin, showEventTiming: Bool) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: rowIcon(pin, showEventTiming: showEventTiming))
-                .foregroundStyle(pin.visited ? Color.gray : (pin.kind == .event ? Theme.event : Theme.accent))
-                .font(.title2)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(pin.name)
-                    .font(.headline)
-                    .foregroundStyle(pin.visited ? .secondary : .primary)
-                HStack(spacing: 4) {
-                    if showEventTiming, let start = pin.eventStart {
-                        Text(start, format: .relative(presentation: .named))
-                            .foregroundStyle(Theme.event)
-                    } else if pin.visited, let when = pin.visitedAt {
-                        Text("Visited \(when.formatted(date: .abbreviated, time: .omitted))")
-                    } else if let city = pin.city {
-                        Text(city)
-                    }
-                    if pin.muted {
-                        Image(systemName: "bell.slash.fill")
-                    }
-                }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func rowIcon(_ pin: SavedPin, showEventTiming: Bool) -> String {
-        if pin.visited { return "checkmark.circle.fill" }
-        if showEventTiming { return "calendar.badge.clock" }
-        return pin.kind == .event ? "calendar" : "mappin.circle.fill"
+    private func eventTrailing(_ pin: SavedPin, showEventTiming: Bool) -> String? {
+        guard showEventTiming, let start = pin.eventStart else { return nil }
+        return start.formatted(.relative(presentation: .named))
     }
 
     private var emptyState: some View {
