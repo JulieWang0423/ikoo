@@ -129,6 +129,11 @@ struct MapScreen: View {
                         withAnimation { previewPin = pins.first { $0.name.contains(target) } }
                     }
                 }
+                if let target = ProcessInfo.processInfo.environment["IKOO_DEBUG_OPEN_DETAIL"] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        detailPin = pins.first { $0.name.contains(target) }
+                    }
+                }
                 if ProcessInfo.processInfo.environment["IKOO_DEBUG_ADD"] == "1" {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                         showAddSheet = true

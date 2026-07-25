@@ -3,6 +3,9 @@ import SwiftData
 import MapKit
 import CoreLocation
 
+/// A place's full detail. Deliberately not a stack of grouped rows: a branded
+/// hero, one calm meta line (category + distance), clean actions, then tidy
+/// info — with each fact shown exactly once.
 struct PinDetailView: View {
     @Environment(\.modelContext) private var context
     @Bindable var pin: SavedPin
@@ -10,20 +13,34 @@ struct PinDetailView: View {
     @State private var distanceText: String?
     @State private var lookAroundScene: MKLookAroundScene?
 
+    private var cat: CategoryStyle { CategoryStyle.of(pin) }
+    private var caption: String? {
+        let c = pin.sourceCaption?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (c?.isEmpty == false) ? c : nil
+    }
+    private var sourceName: String? {
+        guard let s = pin.sourceApp, s != "other" else { return nil }
+        return s.capitalized
+    }
+
     var body: some View {
-        List {
-            heroSection
-            momentSection
-            whySavedSection
-            detailsSection
-            managementSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                hero
+                metaAndActions
+                if caption != nil { whySaved }
+                detailsCard
+                managementCard
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 36)
         }
-        .ikooScreenBackground()
+        .background(Theme.background.ignoresSafeArea())
         .navigationTitle(pin.name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            // Opening a pin resets the ignored-notification counter so it
-            // isn't auto-muted, and records the visit for auto-mute logic.
+            // Opening a pin clears the ignored-notification counter so it isn't
+            // auto-muted, and records the visit.
             pin.lastOpenedAt = Date()
             pin.notifyCount = 0
             try? context.save()
@@ -32,43 +49,62 @@ struct PinDetailView: View {
         }
     }
 
-    // MARK: - Sections
+    // MARK: - Hero
 
-    /// An immersive Look Around street view when Apple has coverage. No map
-    /// fallback — you reached this from the map, so re-showing it is noise; if
-    /// there's no Look Around, the post thumbnail (in "Why you saved this")
-    /// carries the visual instead.
     @ViewBuilder
-    private var heroSection: some View {
-        if let lookAroundScene {
-            Section {
+    private var hero: some View {
+        Group {
+            if let lookAroundScene {
                 LookAroundPreview(initialScene: lookAroundScene)
-                    .frame(height: 200)
-                    .listRowInsets(EdgeInsets())
+            } else if let thumb = pin.thumbnailURL, let url = URL(string: thumb) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
+                    case .empty: categoryBanner.overlay(ProgressView().tint(.white))
+                    default: categoryBanner
+                    }
+                }
+            } else {
+                categoryBanner
             }
-            .listRowBackground(Theme.surface)
+        }
+        .frame(height: 208)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.horizontal, 20)
+    }
+
+    /// Branded header when there's no street view or post image — a category
+    /// color wash with the category glyph, not a redundant map.
+    private var categoryBanner: some View {
+        ZStack {
+            LinearGradient(colors: [cat.color, cat.color.opacity(0.8)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+            Circle().fill(.white.opacity(0.12)).frame(width: 220, height: 220).offset(x: 90, y: -70)
+            Circle().fill(.white.opacity(0.08)).frame(width: 130, height: 130).offset(x: -110, y: 70)
+            Image(systemName: pin.visited ? "checkmark" : cat.symbol)
+                .font(.system(size: 60, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.92))
         }
     }
 
-    /// The "standing on the street" moment: how far, and the two things you
-    /// most want right then — directions, and the post that made you save it.
-    private var cat: CategoryStyle { CategoryStyle.of(pin) }
+    // MARK: - Meta + actions
 
-    private var momentSection: some View {
-        Section {
-            HStack(spacing: 8) {
+    private var metaAndActions: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
                 Label(cat.label, systemImage: cat.symbol)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(cat.color)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(cat.color.opacity(0.15), in: Capsule())
+                if let distanceText {
+                    Label(distanceText, systemImage: "location.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(cat.color)
+                }
                 Spacer()
-            }
-            if let distanceText {
-                Label(distanceText, systemImage: "location.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(cat.color)
             }
             if pin.kind == .event, let start = pin.eventStart {
                 Label(eventTiming(start: start, end: pin.eventEnd), systemImage: "calendar")
@@ -76,145 +112,146 @@ struct PinDetailView: View {
                     .foregroundStyle(Theme.event)
             }
             HStack(spacing: 12) {
-                Button(action: openInMaps) {
-                    Label("Directions", systemImage: "figure.walk")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.accent)
+                Button(action: openInMaps) { pill("Directions", "figure.walk", filled: true) }
+                    .buttonStyle(.plain)
                 if let url = sourceURL {
-                    Link(destination: url) {
-                        Label("Watch post", systemImage: "play.fill")
-                            .foregroundStyle(Theme.accent)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(Theme.accent)
+                    Link(destination: url) { pill("Watch post", "play.fill", filled: false) }
+                        .buttonStyle(.plain)
                 }
             }
-            // Plain monochrome glyphs — the Maps-style diamond symbol renders a
-            // fixed blue and ignores tint, so it's deliberately avoided here.
-            .symbolRenderingMode(.monochrome)
-            .padding(.vertical, 2)
         }
-        .listRowBackground(Theme.surface)
+        .padding(.horizontal, 20)
     }
 
-    @ViewBuilder
-    private var whySavedSection: some View {
-        let hasCaption = !(pin.sourceCaption ?? "").isEmpty
-        let hasThumb = !(pin.thumbnailURL ?? "").isEmpty
-        if hasCaption || hasThumb {
-            Section("Why you saved this") {
-                if let thumb = pin.thumbnailURL, let url = URL(string: thumb) {
-                    thumbnailLink(url: url)
-                }
-                if let caption = pin.sourceCaption, !caption.isEmpty {
-                    Text(caption)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                if let source = pin.sourceApp, source != "other" {
-                    Text("From \(source.capitalized)")
-                        .font(.footnote)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .listRowBackground(Theme.surface)
+    private func pill(_ title: String, _ symbol: String, filled: Bool) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol).font(.subheadline.weight(.bold))
+            Text(title).font(.subheadline.weight(.semibold))
         }
-    }
-
-    /// The frame from the post that made the user save this — tapping it opens
-    /// the original. Thumbnail URLs can expire, so failure degrades silently.
-    @ViewBuilder
-    private func thumbnailLink(url: URL) -> some View {
-        let image = AsyncImage(url: url) { phase in
-            switch phase {
-            case .success(let img):
-                img.resizable().aspectRatio(contentMode: .fill)
-            case .empty:
-                Rectangle().fill(.quaternary).overlay { ProgressView() }
-            case .failure:
-                EmptyView()
-            @unknown default:
-                EmptyView()
-            }
-        }
-        .frame(height: 200)
+        .foregroundStyle(filled ? Color.white : Theme.accent)
         .frame(maxWidth: .infinity)
-        .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(alignment: .bottomTrailing) {
-            if pin.sourceURL != nil {
-                Image(systemName: "play.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(.white)
-                    .shadow(radius: 4)
-                    .padding(10)
-            }
-        }
-
-        if let sourceURL, let link = sourceURL as URL? {
-            Link(destination: link) { image }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        } else {
-            image
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        }
+        .padding(.vertical, 14)
+        .background(filled ? Theme.accent : Theme.accent.opacity(0.12),
+                    in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .strokeBorder(filled ? Color.clear : Theme.accent.opacity(0.28), lineWidth: 1)
+        )
     }
 
-    private var detailsSection: some View {
-        Section {
-            if let address = pin.address {
-                LabeledContent("Address", value: address)
+    // MARK: - Why saved
+
+    private var whySaved: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionLabel("Why you saved this")
+            if let caption {
+                Text(caption).font(.callout).foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            if let category = pin.category {
-                LabeledContent("Category", value: prettyCategory(category))
-            }
-            LabeledContent("Saved", value: pin.createdAt.formatted(date: .abbreviated, time: .omitted))
-            if pin.sourceCaption == nil, let source = pin.sourceApp, source != "other" {
-                LabeledContent("Source", value: source.capitalized)
-            }
-            if pin.kind == .event, let start = pin.eventStart {
-                LabeledContent("Starts", value: start.formatted(date: .abbreviated, time: .shortened))
-                if let end = pin.eventEnd {
-                    LabeledContent("Ends", value: end.formatted(date: .abbreviated, time: .shortened))
+            Text(savedLine).font(.caption).foregroundStyle(Theme.inkSecondary)
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private var savedLine: String {
+        let date = pin.createdAt.formatted(date: .abbreviated, time: .omitted)
+        if let sourceName { return "Saved from \(sourceName) · \(date)" }
+        return "Saved \(date)"
+    }
+
+    // MARK: - Details
+
+    @ViewBuilder
+    private var detailsCard: some View {
+        let showSavedRow = caption == nil  // otherwise it's in the "why saved" line
+        let hasEvent = pin.kind == .event && pin.eventStart != nil
+        if pin.address != nil || hasEvent || showSavedRow {
+            infoCard {
+                if let address = pin.address {
+                    infoRow("Address", address)
+                    if hasEvent || showSavedRow { rowDivider }
+                }
+                if hasEvent, let start = pin.eventStart {
+                    infoRow("Starts", start.formatted(date: .abbreviated, time: .shortened))
+                    if let end = pin.eventEnd {
+                        rowDivider
+                        infoRow("Ends", end.formatted(date: .abbreviated, time: .shortened))
+                    }
+                    if showSavedRow { rowDivider }
+                }
+                if showSavedRow {
+                    infoRow("Saved", pin.createdAt.formatted(date: .abbreviated, time: .omitted))
+                    if let sourceName { rowDivider; infoRow("Source", sourceName) }
                 }
             }
         }
-        .listRowBackground(Theme.surface)
     }
 
-    private var managementSection: some View {
-        Section {
-            Toggle(isOn: Binding(
-                get: { pin.visited },
-                set: { visited in
-                    pin.visitedAt = visited ? Date() : nil
-                    try? context.save()
-                    GeofenceManager.shared.rebalance()
+    // MARK: - Management
+
+    private var managementCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            infoCard {
+                Toggle(isOn: visitedBinding) {
+                    Label(pin.visited ? "Been here" : "Mark as visited",
+                          systemImage: pin.visited ? "checkmark.circle.fill" : "checkmark.circle")
+                        .foregroundStyle(Theme.ink)
                 }
-            )) {
-                Label(pin.visited ? "Been here" : "Mark as visited",
-                      systemImage: pin.visited ? "checkmark.circle.fill" : "checkmark.circle")
+                .tint(Theme.accent)
+                .padding(.horizontal, 16).padding(.vertical, 8)
+                rowDivider
+                collectionRow
+                rowDivider
+                Toggle(isOn: alertsOn) {
+                    Label("Nearby alerts", systemImage: "bell").foregroundStyle(Theme.ink)
+                }
+                .tint(Theme.accent)
+                .padding(.horizontal, 16).padding(.vertical, 8)
             }
-            collectionPicker
-            Toggle(isOn: alertsOn) {
-                Label("Nearby alerts", systemImage: "bell")
-            }
-        } footer: {
             if pin.visited {
                 Text("You've been here, so ikoo stops nudging you. Keep alerts on if it's a favorite worth revisiting.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .padding(.horizontal, 24)
             }
         }
-        .listRowBackground(Theme.surface)
     }
 
-    /// One "Nearby alerts" control that adapts: for a place you haven't been,
-    /// it mutes/unmutes; once visited, it decides whether this favorite keeps
-    /// alerting despite the visited default of going quiet.
+    private var visitedBinding: Binding<Bool> {
+        Binding(
+            get: { pin.visited },
+            set: { visited in
+                pin.visitedAt = visited ? Date() : nil
+                try? context.save()
+                GeofenceManager.shared.rebalance()
+            }
+        )
+    }
+
+    private var collectionRow: some View {
+        Menu {
+            Button("None") { setCollection(nil) }
+            ForEach(knownCollections, id: \.self) { name in
+                Button {
+                    setCollection(name)
+                } label: {
+                    if pin.collectionName == name { Label(name, systemImage: "checkmark") }
+                    else { Text(name) }
+                }
+            }
+        } label: {
+            HStack {
+                Label("Collection", systemImage: "folder").foregroundStyle(Theme.ink)
+                Spacer()
+                Text(pin.collectionName ?? "None").foregroundStyle(Theme.inkSecondary)
+                Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Theme.inkSecondary)
+            }
+            .font(.body)
+            .padding(.horizontal, 16).padding(.vertical, 12)
+        }
+    }
+
+    /// Adapts: mute/unmute before you've been, keep-or-silence once visited.
     private var alertsOn: Binding<Bool> {
         Binding(
             get: { pin.visited ? pin.notifyWhenVisited : !pin.muted },
@@ -232,45 +269,48 @@ struct PinDetailView: View {
         )
     }
 
-    // MARK: - Collection picker
+    // MARK: - Reusable bits
 
-    /// Existing collections come from pins plus names pre-registered on the
-    /// home screen (UserDefaults "knownCollections").
+    private func infoCard<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(spacing: 0) { content() }
+            .padding(.vertical, 4)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .padding(.horizontal, 20)
+    }
+
+    private func infoRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label).foregroundStyle(Theme.inkSecondary)
+            Spacer(minLength: 16)
+            Text(value).foregroundStyle(Theme.ink).multilineTextAlignment(.trailing)
+        }
+        .font(.subheadline)
+        .padding(.horizontal, 16).padding(.vertical, 12)
+    }
+
+    private var rowDivider: some View {
+        Divider().overlay(Theme.inkSecondary.opacity(0.15)).padding(.leading, 16)
+    }
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(.caption2.weight(.bold))
+            .tracking(0.6)
+            .foregroundStyle(Theme.inkSecondary)
+    }
+
+    // MARK: - Data helpers
+
     private var knownCollections: [String] {
         let fromDefaults = UserDefaults.standard.stringArray(forKey: "knownCollections") ?? []
         let fromPins = (try? context.fetch(FetchDescriptor<SavedPin>()))?.compactMap(\.collectionName) ?? []
         return Array(Set(fromDefaults + fromPins)).sorted()
     }
 
-    private var collectionPicker: some View {
-        Menu {
-            Button("None") { setCollection(nil) }
-            ForEach(knownCollections, id: \.self) { name in
-                Button {
-                    setCollection(name)
-                } label: {
-                    if pin.collectionName == name {
-                        Label(name, systemImage: "checkmark")
-                    } else {
-                        Text(name)
-                    }
-                }
-            }
-        } label: {
-            LabeledContent {
-                Text(pin.collectionName ?? "None")
-            } label: {
-                Label("Collection", systemImage: "folder")
-            }
-        }
-    }
-
     private func setCollection(_ name: String?) {
         pin.collectionName = name
         try? context.save()
     }
-
-    // MARK: - Helpers
 
     private var sourceURL: URL? {
         guard let urlString = pin.sourceURL else { return nil }
@@ -279,15 +319,12 @@ struct PinDetailView: View {
 
     private func updateDistance() {
         guard let here = CLLocationManager().location else { return }
-        let meters = here.distance(from: pin.location)
-        distanceText = Self.formatDistance(meters)
+        distanceText = Self.formatDistance(here.distance(from: pin.location))
     }
 
     private func loadLookAround() async {
         let request = MKLookAroundSceneRequest(coordinate: pin.coordinate)
-        let scene = try? await request.scene
-        ikooLog.info("lookAround for \(pin.name, privacy: .public): \(scene == nil ? "none" : "found")")
-        lookAroundScene = scene
+        lookAroundScene = try? await request.scene
     }
 
     static func formatDistance(_ meters: CLLocationDistance) -> String {
@@ -300,9 +337,7 @@ struct PinDetailView: View {
     private func eventTiming(start: Date, end: Date?) -> String {
         let now = Date()
         if start <= now, let end, now <= end { return "Happening now" }
-        if start > now {
-            return "Starts \(start.formatted(.relative(presentation: .named)))"
-        }
+        if start > now { return "Starts \(start.formatted(.relative(presentation: .named)))" }
         return start.formatted(date: .abbreviated, time: .shortened)
     }
 
@@ -310,9 +345,5 @@ struct PinDetailView: View {
         let item = MKMapItem(placemark: MKPlacemark(coordinate: pin.coordinate))
         item.name = pin.name
         item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
-    }
-
-    private func prettyCategory(_ raw: String) -> String {
-        raw.replacingOccurrences(of: "MKPOICategory", with: "")
     }
 }
