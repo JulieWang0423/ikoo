@@ -2,9 +2,9 @@ import SwiftUI
 import SwiftData
 import MapKit
 
-/// Landing tab: explains what ikoo does before dropping the user on a map,
-/// and organizes saved pins into collections and cities (in the spirit of
-/// Apple Maps' library + guides, scaled to MVP).
+/// Landing tab: a warm, branded overview of your places — stats, collections
+/// as a color carousel, cities, and recent saves — rather than a stock
+/// grouped list. First-run shows the how-it-works instead.
 struct HomeScreen: View {
     @Environment(\.modelContext) private var context
     @Query(filter: #Predicate<SavedPin> { $0.statusRaw == "active" },
@@ -16,7 +16,12 @@ struct HomeScreen: View {
     @State private var newCollectionName = ""
     @State private var showAlertsExplainer = false
     @State private var debugCity: String?
-    @State private var pushedPin: SavedPin?
+
+    // Rotating card colors for collections.
+    private let palette: [Color] = [
+        Color(hex: 0xD8560E), Color(hex: 0x2E8C9E), Color(hex: 0x6A5ACB),
+        Color(hex: 0xC2971E), Color(hex: 0xA6497F), Color(hex: 0x5C9A46),
+    ]
 
     private var collections: [(name: String, pins: [SavedPin])] {
         Dictionary(grouping: pins.filter { $0.collectionName != nil }, by: { $0.collectionName! })
@@ -30,52 +35,50 @@ struct HomeScreen: View {
             .sorted { $0.pins.count > $1.pins.count }
     }
 
-    private var upcomingEvents: Int {
-        pins.filter { $0.kind == .event && !$0.isExpiredEvent }.count
-    }
+    private var wantToGoCount: Int { pins.filter { !$0.visited }.count }
+    private var upcomingEvents: Int { pins.filter { $0.kind == .event && !$0.isExpiredEvent }.count }
 
     var body: some View {
         NavigationStack {
-            List {
-                Group {
-                    heroSection
+            ScrollView {
+                VStack(alignment: .leading, spacing: 26) {
+                    header
                     if pins.isEmpty {
-                        gettingStartedSection
+                        gettingStarted
                     } else {
-                        statsSection
+                        statChips
+                        if geofence.nearbyAlertsState != .on { alertsBanner }
                         collectionsSection
-                        citiesSection
+                        if !cities.isEmpty { citiesSection }
+                        recentSection
                     }
                 }
-                .listRowBackground(Theme.surface)
-                if !pins.isEmpty {
-                    recentSection
-                }
+                .padding(.top, 4)
+                .padding(.bottom, 36)
             }
-            .ikooScreenBackground()
-            .navigationTitle("ikoo")
-            .navigationDestination(item: $pushedPin) { pin in
-                PinDetailView(pin: pin)
-            }
-            #if DEBUG
+            .background(Theme.background.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                #if DEBUG
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Load samples", systemImage: "sparkles") {
                         SampleData.loadShowcase(into: context)
                     }
                 }
+                #endif
             }
-            #endif
+            .navigationDestination(for: SavedPin.self) { pin in
+                PinDetailView(pin: pin)
+            }
             .alert("New collection", isPresented: $showNewCollection) {
                 TextField("e.g. Seoul trip", text: $newCollectionName)
                 Button("Cancel", role: .cancel) { newCollectionName = "" }
                 Button("Create") { createCollection() }
             } message: {
-                Text("Group pins for a trip, a city, or a theme. Assign pins from their detail page.")
+                Text("Group places for a trip, a city, or a theme. Assign a place from its detail page.")
             }
             .sheet(isPresented: $showAlertsExplainer) {
-                NearbyAlertsExplainer()
-                    .presentationDetents([.large])
+                NearbyAlertsExplainer().presentationDetents([.large])
             }
             #if DEBUG
             .navigationDestination(item: $debugCity) { city in
@@ -84,175 +87,251 @@ struct HomeScreen: View {
                              startInMap: true)
             }
             .onAppear {
-                if let c = ProcessInfo.processInfo.environment["IKOO_DEBUG_OPEN_CITY"] {
-                    debugCity = c
-                }
+                if let c = ProcessInfo.processInfo.environment["IKOO_DEBUG_OPEN_CITY"] { debugCity = c }
             }
             #endif
         }
+        .tint(Theme.accent)
     }
 
-    // MARK: - Sections
+    // MARK: - Header
 
-    private var heroSection: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Never walk past a place you saved.")
-                    .ikooTitle(30)
-                    .foregroundStyle(Theme.ink)
-                howItWorksRow(number: "1", symbol: "square.and.arrow.up",
-                              text: "See a place or event on TikTok or RedNote? Tap Share → ikoo.")
-                howItWorksRow(number: "2", symbol: "sparkles",
-                              text: "ikoo reads the caption, finds every place mentioned, and pins them on your map.")
-                howItWorksRow(number: "3", symbol: "bell.badge",
-                              text: "Walk near a saved spot someday — ikoo taps you on the shoulder.")
-                switch geofence.nearbyAlertsState {
-                case .on:
-                    EmptyView()
-                case .needsSettings:
-                    Button {
-                        showAlertsExplainer = true
-                    } label: {
-                        Label("Nearby alerts are off — fix in Settings", systemImage: "bell.slash")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.accent)
-                default:
-                    Button {
-                        showAlertsExplainer = true
-                    } label: {
-                        Label("Turn on nearby alerts", systemImage: "bell.badge")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-            }
-            .padding(.vertical, 6)
-        }
-    }
-
-    private func howItWorksRow(number: String, symbol: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol)
-                .font(.body)
-                .foregroundStyle(.tint)
-                .frame(width: 24)
-            Text(text)
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("ikoo").font(Theme.title(40)).foregroundStyle(Theme.ink)
+            Text(pins.isEmpty
+                 ? "Save places now, stumble on them later."
+                 : "\(wantToGoCount) \(wantToGoCount == 1 ? "place" : "places") waiting to be found")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
+        .padding(.horizontal, 20)
     }
 
-    private var gettingStartedSection: some View {
-        Section("Try it now") {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Nothing saved yet. Open TikTok or RedNote, find a post that names a place — a café, a market, a night event — and share it to ikoo.")
-                Text("Posts whose captions name specific spots work best. You can also add places by hand from the Map tab.")
-                    .foregroundStyle(.secondary)
+    // MARK: - Stat chips
+
+    private var statChips: some View {
+        HStack(spacing: 12) {
+            statChip(pins.count, "saved", palette[0], "mappin.fill")
+            statChip(wantToGoCount, "to go", palette[2], "bookmark.fill")
+            statChip(cities.count, "cities", palette[1], "building.2.fill")
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private func statChip(_ value: Int, _ label: String, _ color: Color, _ symbol: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Image(systemName: symbol).font(.subheadline.weight(.semibold)).foregroundStyle(color)
+            Text("\(value)").font(Theme.title(30)).foregroundStyle(Theme.ink)
+            Text(label).font(.caption).foregroundStyle(Theme.inkSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background {
+            ZStack(alignment: .topTrailing) {
+                Theme.surface
+                Circle().fill(color.opacity(0.12)).frame(width: 70, height: 70).offset(x: 26, y: -30)
             }
-            .font(.subheadline)
-            .padding(.vertical, 4)
         }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
-    private var statsSection: some View {
-        Section {
-            HStack {
-                stat(value: pins.count, label: "places")
-                Divider()
-                stat(value: upcomingEvents, label: "events")
-                Divider()
-                stat(value: cities.count, label: "cities")
+    // MARK: - Alerts banner
+
+    private var alertsBanner: some View {
+        Button { showAlertsExplainer = true } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "bell.badge.fill")
+                    .font(.title3)
+                    .foregroundStyle(Theme.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Turn on nearby alerts")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
+                    Text("Get a nudge when you're near a saved place")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(Theme.inkSecondary)
             }
-            .frame(maxWidth: .infinity)
+            .padding(14)
+            .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Theme.accent.opacity(0.22), lineWidth: 1)
+            )
         }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 20)
     }
 
-    private func stat(value: Int, label: String) -> some View {
-        VStack(spacing: 2) {
-            Text("\(value)").font(.title2.weight(.bold)).monospacedDigit()
-            Text(label).font(.caption).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-    }
+    // MARK: - Collections
 
     private var collectionsSection: some View {
-        Section {
-            ForEach(collections, id: \.name) { collection in
-                NavigationLink {
-                    PinGroupList(title: collection.name, pins: collection.pins)
-                } label: {
-                    Label {
-                        HStack {
-                            Text(collection.name)
-                            Spacer()
-                            Text("\(collection.pins.count)").foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader("Collections")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(Array(collections.enumerated()), id: \.element.name) { index, c in
+                        NavigationLink {
+                            PinGroupList(title: c.name, pins: c.pins)
+                        } label: {
+                            collectionCard(name: c.name, count: c.pins.count,
+                                           color: palette[index % palette.count])
                         }
-                    } icon: {
-                        Image(systemName: "folder").foregroundStyle(.tint)
+                        .buttonStyle(.plain)
                     }
+                    newCollectionCard
                 }
-            }
-            Button {
-                showNewCollection = true
-            } label: {
-                Label("New collection", systemImage: "folder.badge.plus")
-            }
-        } header: {
-            Text("Collections")
-        } footer: {
-            if collections.isEmpty {
-                Text("Group pins for a trip or a theme — assign a pin from its detail page.")
+                .padding(.horizontal, 20)
             }
         }
     }
+
+    private func collectionCard(name: String, count: Int, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Image(systemName: "folder.fill")
+                .font(.title3)
+                .foregroundStyle(.white.opacity(0.95))
+            Spacer(minLength: 8)
+            Text(name)
+                .font(Theme.title(19))
+                .foregroundStyle(.white)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("\(count) \(count == 1 ? "place" : "places")")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.85))
+        }
+        .padding(14)
+        .frame(width: 158, height: 118, alignment: .leading)
+        .background {
+            ZStack(alignment: .bottomTrailing) {
+                color
+                Circle().fill(.white.opacity(0.12)).frame(width: 120, height: 120).offset(x: 40, y: 40)
+                Circle().fill(.white.opacity(0.08)).frame(width: 70, height: 70).offset(x: 10, y: 20)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var newCollectionCard: some View {
+        Button { showNewCollection = true } label: {
+            VStack(spacing: 8) {
+                Image(systemName: "plus").font(.title2.weight(.semibold))
+                Text("New").font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(Theme.inkSecondary)
+            .frame(width: 110, height: 118)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Theme.inkSecondary.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Cities
 
     private var citiesSection: some View {
-        Section("Cities") {
-            ForEach(cities.prefix(6), id: \.name) { city in
-                NavigationLink {
-                    PinGroupList(title: city.name, pins: city.pins)
-                } label: {
-                    Label {
-                        HStack {
-                            Text(city.name)
-                            Spacer()
-                            Text("\(city.pins.count)").foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader("Cities")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(cities.prefix(8), id: \.name) { city in
+                        NavigationLink {
+                            PinGroupList(title: city.name, pins: city.pins)
+                        } label: {
+                            cityChip(name: city.name, count: city.pins.count)
                         }
-                    } icon: {
-                        Image(systemName: "building.2").foregroundStyle(.tint)
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding(.horizontal, 20)
             }
         }
     }
 
-    private var recentSection: some View {
-        Section("Recently saved") {
-            ForEach(pins.prefix(3)) { pin in
-                Button {
-                    pushedPin = pin
-                } label: {
-                    PlaceCard(pin: pin)
-                }
-                .buttonStyle(.plain)
-                .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            }
+    private func cityChip(name: String, count: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "building.2.fill")
+                .font(.footnote)
+                .foregroundStyle(palette[1])
+            Text(name).font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink)
+            Text("\(count)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(palette[1])
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Theme.surface, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.inkSecondary.opacity(0.12), lineWidth: 1))
+    }
+
+    // MARK: - Recent
+
+    private var recentSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeader("Recently saved")
+            VStack(spacing: 10) {
+                ForEach(pins.prefix(4)) { pin in
+                    NavigationLink(value: pin) {
+                        PlaceCard(pin: pin)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    // MARK: - Getting started (empty)
+
+    private var gettingStarted: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Never walk past a place you saved.")
+                .font(Theme.title(26))
+                .foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            howItWorks("square.and.arrow.up", "See a place on TikTok or RedNote? Tap Share → ikoo.")
+            howItWorks("sparkles", "ikoo reads the caption and pins every place it finds.")
+            howItWorks("bell.badge", "Walk near a saved spot someday — ikoo taps you on the shoulder.")
+            Button { showAlertsExplainer = true } label: {
+                Text("Turn on nearby alerts")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.accent)
+            .padding(.top, 4)
+        }
+        .padding(18)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(.horizontal, 20)
+    }
+
+    private func howItWorks(_ symbol: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: symbol).font(.body).foregroundStyle(Theme.accent).frame(width: 24)
+            Text(text).font(.subheadline).foregroundStyle(Theme.inkSecondary)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.headline)
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, 20)
     }
 
     private func createCollection() {
         let name = newCollectionName.trimmingCharacters(in: .whitespaces)
         newCollectionName = ""
         guard !name.isEmpty else { return }
-        // A collection exists once a pin carries its name; an empty one has
-        // nothing to store yet, so park the newest pin in it as a starter
-        // only if the user has pins but no other way to reach the collection.
-        // Simpler contract for MVP: creating a collection just pre-registers
-        // the name via UserDefaults so it appears in pickers.
         var known = UserDefaults.standard.stringArray(forKey: "knownCollections") ?? []
         if !known.contains(name) {
             known.append(name)
