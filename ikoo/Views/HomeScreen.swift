@@ -15,6 +15,8 @@ struct HomeScreen: View {
     @State private var showNewCollection = false
     @State private var newCollectionName = ""
     @State private var showAlertsExplainer = false
+    @State private var showAddSheet = false
+    @State private var showPasteLink = false
     @State private var debugCity: String?
 
     // Rotating card colors for collections.
@@ -43,6 +45,7 @@ struct HomeScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
                     header
+                    addBar
                     if pins.isEmpty {
                         gettingStarted
                     } else {
@@ -80,6 +83,8 @@ struct HomeScreen: View {
             .sheet(isPresented: $showAlertsExplainer) {
                 NearbyAlertsExplainer().presentationDetents([.large])
             }
+            .sheet(isPresented: $showAddSheet) { AddPinView() }
+            .sheet(isPresented: $showPasteLink) { PasteLinkView() }
             #if DEBUG
             .navigationDestination(item: $debugCity) { city in
                 PinGroupList(title: city,
@@ -106,6 +111,35 @@ struct HomeScreen: View {
                 .foregroundStyle(Theme.inkSecondary)
         }
         .padding(.horizontal, 20)
+    }
+
+    // MARK: - Add entry
+
+    private var addBar: some View {
+        HStack(spacing: 12) {
+            addButton("Add a place", "magnifyingglass", filled: true) { showAddSheet = true }
+            addButton("Paste a link", "link", filled: false) { showPasteLink = true }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private func addButton(_ title: String, _ symbol: String, filled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: symbol).font(.subheadline.weight(.bold))
+                Text(title).font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(filled ? Color.white : Theme.accent)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 15)
+            .background(filled ? Theme.accent : Theme.accent.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(filled ? Color.clear : Theme.accent.opacity(0.28), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Stat chips
