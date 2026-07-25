@@ -23,20 +23,24 @@ struct PinDetailView: View {
         return s.capitalized
     }
 
+    private var hasThumb: Bool { !(pin.thumbnailURL ?? "").isEmpty }
+    private var hasWhySaved: Bool { caption != nil || hasThumb }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                hero
-                metaAndActions
-                if caption != nil { whySaved }
+                titleBlock
+                actions
+                if hasWhySaved { whySaved }
+                if lookAroundScene != nil { lookAroundSection }
                 detailsCard
                 managementCard
             }
-            .padding(.top, 8)
+            .padding(.top, 14)
             .padding(.bottom, 36)
         }
         .background(Theme.background.ignoresSafeArea())
-        .navigationTitle(pin.name)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             // Opening a pin clears the ignored-notification counter so it isn't
@@ -49,75 +53,54 @@ struct PinDetailView: View {
         }
     }
 
-    // MARK: - Hero
+    // MARK: - Title (Apple Maps style: big, left-aligned, buttons beneath)
 
-    @ViewBuilder
-    private var hero: some View {
-        Group {
-            if let lookAroundScene {
-                LookAroundPreview(initialScene: lookAroundScene)
-            } else if let thumb = pin.thumbnailURL, let url = URL(string: thumb) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
-                    case .empty: categoryBanner.overlay(ProgressView().tint(.white))
-                    default: categoryBanner
-                    }
-                }
-            } else {
-                categoryBanner
-            }
-        }
-        .frame(height: 208)
-        .frame(maxWidth: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .padding(.horizontal, 20)
-    }
-
-    /// Branded header when there's no street view or post image — a category
-    /// color wash with the category glyph, not a redundant map.
-    private var categoryBanner: some View {
-        ZStack {
-            LinearGradient(colors: [cat.color, cat.color.opacity(0.8)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-            Circle().fill(.white.opacity(0.12)).frame(width: 220, height: 220).offset(x: 90, y: -70)
-            Circle().fill(.white.opacity(0.08)).frame(width: 130, height: 130).offset(x: -110, y: 70)
-            Image(systemName: pin.visited ? "checkmark" : cat.symbol)
-                .font(.system(size: 60, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.92))
-        }
-    }
-
-    // MARK: - Meta + actions
-
-    private var metaAndActions: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 10) {
-                Label(cat.label, systemImage: cat.symbol)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(cat.color)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(cat.color.opacity(0.15), in: Capsule())
-                if let distanceText {
-                    Label(distanceText, systemImage: "location.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(cat.color)
-                }
-                Spacer()
-            }
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(pin.name)
+                .font(Theme.title(30))
+                .foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(subtitle)
+                .font(.subheadline)
+                .foregroundStyle(Theme.inkSecondary)
             if pin.kind == .event, let start = pin.eventStart {
                 Label(eventTiming(start: start, end: pin.eventEnd), systemImage: "calendar")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.event)
+                    .padding(.top, 2)
             }
-            HStack(spacing: 12) {
-                Button(action: openInMaps) { pill("Directions", "figure.walk", filled: true) }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private var subtitle: String {
+        var parts = [cat.label]
+        if let distanceText { parts.append(distanceText) }
+        if pin.visited { parts.append("Visited") }
+        return parts.joined(separator: " · ")
+    }
+
+    private var actions: some View {
+        HStack(spacing: 12) {
+            Button(action: openInMaps) { pill("Directions", "figure.walk", filled: true) }
+                .buttonStyle(.plain)
+            if let url = sourceURL {
+                Link(destination: url) { pill("Watch post", "play.fill", filled: false) }
                     .buttonStyle(.plain)
-                if let url = sourceURL {
-                    Link(destination: url) { pill("Watch post", "play.fill", filled: false) }
-                        .buttonStyle(.plain)
-                }
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    // MARK: - Look Around (moved below the fold)
+
+    private var lookAroundSection: some View {
+        Group {
+            if let lookAroundScene {
+                LookAroundPreview(initialScene: lookAroundScene)
+                    .frame(height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
         }
         .padding(.horizontal, 20)
@@ -142,8 +125,11 @@ struct PinDetailView: View {
     // MARK: - Why saved
 
     private var whySaved: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionLabel("Why you saved this")
+            if let thumb = pin.thumbnailURL, let url = URL(string: thumb) {
+                thumbnailImage(url)
+            }
             if let caption {
                 Text(caption).font(.callout).foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -151,6 +137,36 @@ struct PinDetailView: View {
             Text(savedLine).font(.caption).foregroundStyle(Theme.inkSecondary)
         }
         .padding(.horizontal, 20)
+    }
+
+    /// The frame from the post that made the user save this — tap to watch.
+    @ViewBuilder
+    private func thumbnailImage(_ url: URL) -> some View {
+        let img = AsyncImage(url: url) { phase in
+            switch phase {
+            case .success(let image): image.resizable().aspectRatio(contentMode: .fill)
+            case .empty: Rectangle().fill(.quaternary).overlay(ProgressView())
+            default: Color.clear
+            }
+        }
+        .frame(height: 190)
+        .frame(maxWidth: .infinity)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(alignment: .bottomTrailing) {
+            if sourceURL != nil {
+                Image(systemName: "play.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(.white)
+                    .shadow(radius: 4)
+                    .padding(10)
+            }
+        }
+        if let sourceURL {
+            Link(destination: sourceURL) { img }
+        } else {
+            img
+        }
     }
 
     private var savedLine: String {
@@ -163,7 +179,7 @@ struct PinDetailView: View {
 
     @ViewBuilder
     private var detailsCard: some View {
-        let showSavedRow = caption == nil  // otherwise it's in the "why saved" line
+        let showSavedRow = !hasWhySaved  // otherwise it's in the "why saved" line
         let hasEvent = pin.kind == .event && pin.eventStart != nil
         if pin.address != nil || hasEvent || showSavedRow {
             infoCard {
