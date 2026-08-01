@@ -113,12 +113,8 @@ struct MapScreen: View {
                     selection = nil
                 }
             }
-            .onChange(of: appState.selectedPinID) { _, newValue in
-                if let id = newValue, let pin = pins.first(where: { $0.id == id }) {
-                    detailPin = pin
-                    appState.selectedPinID = nil
-                }
-            }
+            // Notification deep-links are handled at the root (ContentView) so
+            // they work whichever tab the app opens on.
             .sheet(item: $detailPin) { pin in
                 NavigationStack {
                     PinDetailView(pin: pin)

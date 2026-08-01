@@ -190,6 +190,8 @@ struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
     @State private var pendingIngests: [IngestItem] = []
     @State private var currentIngest: IngestItem?
+    /// The place a tapped notification is asking us to open.
+    @State private var notificationPin: SavedPin?
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var selectedTab = {
         #if DEBUG
@@ -235,6 +237,19 @@ struct ContentView: View {
             }
         }
         .animation(.spring(duration: 0.35), value: appState.toast)
+        // Notification deep-link, handled at the root so it works from any tab
+        // and on a cold launch. Isolated in a background layer because stacking
+        // several .sheet modifiers on one view makes presentation unreliable.
+        .background(
+            Color.clear.sheet(item: $notificationPin) { pin in
+                NavigationStack { PinDetailView(pin: pin) }
+                    .tint(Theme.accent)
+            }
+        )
+        // A tapped notification can land before OR after this view appears, so
+        // catch both: the value already sitting there, and later changes.
+        .onAppear { openPinFromNotification(appState.selectedPinID) }
+        .onChange(of: appState.selectedPinID) { _, id in openPinFromNotification(id) }
         .fullScreenCover(isPresented: onboardingBinding) {
             OnboardingView {
                 hasCompletedOnboarding = true
@@ -288,6 +303,22 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    /// Resolve a deep-linked pin id and present its detail. Consumes the id so
+    /// a stale one can't pop a sheet later.
+    private func openPinFromNotification(_ id: UUID?) {
+        guard let id else { return }
+        appState.selectedPinID = nil
+        // Don't fight the onboarding cover for the screen.
+        guard hasCompletedOnboarding else { return }
+        let descriptor = FetchDescriptor<SavedPin>(predicate: #Predicate { $0.id == id })
+        guard let pin = try? context.fetch(descriptor).first else {
+            ikooLog.error("deep link: no pin for \(id.uuidString, privacy: .public)")
+            return
+        }
+        ikooLog.info("deep link: opening \(pin.name, privacy: .public)")
+        notificationPin = pin
     }
 
     private func drainInbox() {
