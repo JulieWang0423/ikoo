@@ -4,14 +4,21 @@ import UserNotifications
 enum NotificationService {
     static let nearbyCategory = "NEARBY_PIN"
     static let markVisitedAction = "MARK_VISITED"
+    static let directionsAction = "DIRECTIONS"
 
     static func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
     }
 
-    /// A "Been here ✓" action right on the arrival notification, so the loop
-    /// (save → nudge → visit → check off) closes without opening the app.
+    /// Actions on the arrival notification itself, so the two things you
+    /// actually want while standing on the street — walk there, or tick it off
+    /// — need no trip through the app.
     static func registerCategories() {
+        let directions = UNNotificationAction(
+            identifier: directionsAction,
+            title: "Directions",
+            options: [.foreground]  // handing off to Maps requires foreground
+        )
         let visited = UNNotificationAction(
             identifier: markVisitedAction,
             title: "Been here ✓",
@@ -19,11 +26,19 @@ enum NotificationService {
         )
         let category = UNNotificationCategory(
             identifier: nearbyCategory,
-            actions: [visited],
+            actions: [directions, visited],
             intentIdentifiers: [],
             options: []
         )
         UNUserNotificationCenter.current().setNotificationCategories([category])
+        #if DEBUG
+        UNUserNotificationCenter.current().getNotificationCategories { cats in
+            for c in cats {
+                let ids = c.actions.map { "\($0.identifier)(\($0.title))" }.joined(separator: ", ")
+                ikooLog.info("category \(c.identifier, privacy: .public) actions: \(ids, privacy: .public)")
+            }
+        }
+        #endif
     }
 
     static func notifyNearby(pins: [SavedPin], distanceMeters: Int?) {
@@ -47,21 +62,16 @@ enum NotificationService {
             content.title = start < Date()
                 ? "\(first.name) is happening now"
                 : "\(first.name) starts \(day)"
-            var body = "It's \(distanceText)"
-            if let end = first.eventEnd {
-                body += " — happening \(start.formatted(date: .abbreviated, time: .omitted))–\(end.formatted(date: .abbreviated, time: .omitted))."
-            } else {
-                body += " — \(start.formatted(date: .abbreviated, time: .shortened))."
-            }
-            content.body = body
+            // The caption is the reason you cared; distance is the fallback.
+            content.body = first.captionSnippet() ?? "It's \(distanceText)."
         } else {
             content.title = "\(first.name) is \(distanceText)"
-            let saved = first.createdAt.formatted(date: .abbreviated, time: .omitted)
-            if let source = first.sourceApp, source != "other" {
-                content.body = "You saved this from \(source.capitalized) on \(saved). Tap to see it on the map."
-            } else {
-                content.body = "You saved this on \(saved). Tap to see it on the map."
-            }
+            // Lead with why you saved it — the thing that makes someone turn
+            // around — not with when you saved it.
+            content.body = first.captionSnippet()
+                ?? first.address
+                ?? first.sourceDisplayName.map { "You saved this from \($0)." }
+                ?? "One of your saved places."
         }
 
         let request = UNNotificationRequest(

@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import UserNotifications
 import UIKit
+import MapKit
 
 @main
 struct IkooApp: App {
@@ -110,13 +111,29 @@ final class AppState: ObservableObject {
     /// drops off the wishlist and stops nudging on the next rebalance.
     func markVisited(pinID: UUID) {
         MainActor.assumeIsolated {
-            guard let context = container?.mainContext else { return }
-            let descriptor = FetchDescriptor<SavedPin>(predicate: #Predicate { $0.id == pinID })
-            guard let pin = try? context.fetch(descriptor).first else { return }
+            guard let pin = pin(with: pinID) else { return }
             pin.visitedAt = Date()
-            try? context.save()
+            try? container?.mainContext.save()
             GeofenceManager.shared.rebalance()
         }
+    }
+
+    /// "Directions" straight off the notification — hand off to Maps without
+    /// making the user navigate the app first.
+    func openDirections(pinID: UUID) {
+        MainActor.assumeIsolated {
+            guard let pin = pin(with: pinID) else { return }
+            let item = MKMapItem(placemark: MKPlacemark(coordinate: pin.coordinate))
+            item.name = pin.name
+            item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
+        }
+    }
+
+    @MainActor
+    private func pin(with id: UUID) -> SavedPin? {
+        guard let context = container?.mainContext else { return nil }
+        let descriptor = FetchDescriptor<SavedPin>(predicate: #Predicate { $0.id == id })
+        return try? context.fetch(descriptor).first
     }
 
     /// Brief success confirmation shown over the whole app after a save.
@@ -158,9 +175,12 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         if let idString = response.notification.request.content.userInfo["pinID"] as? String,
            let id = UUID(uuidString: idString) {
             DispatchQueue.main.async {
-                if response.actionIdentifier == "MARK_VISITED" {
+                switch response.actionIdentifier {
+                case NotificationService.markVisitedAction:
                     AppState.shared.markVisited(pinID: id)
-                } else {
+                case NotificationService.directionsAction:
+                    AppState.shared.openDirections(pinID: id)
+                default:
                     AppState.shared.selectedPinID = id
                 }
             }

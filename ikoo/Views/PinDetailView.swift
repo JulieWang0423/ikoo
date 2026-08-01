@@ -18,10 +18,7 @@ struct PinDetailView: View {
         let c = pin.sourceCaption?.trimmingCharacters(in: .whitespacesAndNewlines)
         return (c?.isEmpty == false) ? c : nil
     }
-    private var sourceName: String? {
-        guard let s = pin.sourceApp, s != "other" else { return nil }
-        return s.capitalized
-    }
+    private var sourceName: String? { pin.sourceDisplayName }
 
     private var hasThumb: Bool { !(pin.thumbnailURL ?? "").isEmpty }
     private var hasWhySaved: Bool { caption != nil || hasThumb }

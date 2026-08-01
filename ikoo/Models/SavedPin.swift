@@ -117,4 +117,32 @@ final class SavedPin {
     }
 
     var visited: Bool { visitedAt != nil }
+
+    /// Where this came from, spelled the way the platform spells itself.
+    /// nil when it's a plain link with no recognizable source.
+    var sourceDisplayName: String? {
+        switch sourceApp {
+        case "tiktok": return "TikTok"
+        case "rednote": return "RedNote"
+        case "screenshot": return "a screenshot"
+        case "other", nil: return nil
+        case let other?: return other.capitalized
+        }
+    }
+
+    /// The caption trimmed for display in a notification: hashtag spam off the
+    /// end, clipped to a readable length. nil when there's nothing worth saying.
+    func captionSnippet(limit: Int = 130) -> String? {
+        guard var text = sourceCaption?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !text.isEmpty else { return nil }
+        while let tail = text.range(of: #"\s*#[^\s#]+$"#, options: .regularExpression) {
+            text.removeSubrange(tail)
+        }
+        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        if text.count > limit {
+            text = String(text.prefix(limit)).trimmingCharacters(in: .whitespaces) + "…"
+        }
+        return text
+    }
 }
